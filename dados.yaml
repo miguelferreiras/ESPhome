@@ -1,0 +1,51 @@
+# Incluir <<: !include include/dados.yaml no device.yaml correspondente
+esphome:
+  name: $devicename
+  # ...
+
+time:
+  - platform: sntp
+    id: sntp_time
+    servers:  [0.pool.ntp.org, 1.pool.ntp.org , 2.pool.ntp.org]
+    timezone: "Europe/Lisbon"
+    on_time_sync:
+      then:
+        - logger.log: "Relógio sincronizado"
+        - text_sensor.template.publish:
+            id: time_sync
+            state: "Sincronizado"
+    update_interval: 60s
+
+text_sensor:
+  - platform: template
+    name: Estado
+    icon: "mdi:clock-check"
+    id: time_sync
+  - platform: template
+    name: Hora local
+    icon: "mdi:clock"
+    id: time_sync_local
+    update_interval: 60s
+    lambda: |-
+      auto hora = id(sntp_time).now().strftime("%X"); 
+      return {hora};
+  - platform: template
+    name: Data
+    icon: "mdi:calendar-clock"
+    id: data_sync_local
+    lambda: |-
+      auto data = id(sntp_time).now().strftime("%d-%m-%Y");
+      return {data};
+    update_interval: 60s
+
+  - platform: wifi_info
+    ip_address:
+      name: ${friendly_name} - ${device_location} Endereço IP
+      icon: mdi:ip-network
+    ssid:
+      name: ${friendly_name} - ${device_location} Rede Wi-Fi
+      icon: mdi:wifi
+    mac_address:
+      name: ${friendly_name} - ${device_location} MACaddress
+      icon: mdi:lan-connect
+
