@@ -1,5 +1,5 @@
 # ESPhome
-Esphome codes 
+Esphome yaml codes 
 
 PT
 Configurações ESPhome (ESP8266 / ESP32)
