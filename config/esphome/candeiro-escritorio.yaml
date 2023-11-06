@@ -1,0 +1,147 @@
+substitutions: # variaveis para mudar conforme o pretendido. Aqui é apenas um exemplo
+  device_name: "sonoff-th16" #nome do MCU
+  friendly_name: "Candeeiro" #nome amigavel do MCU 
+  device_location: "Escritorio" # lugar onde está instalado
+  device_extras: "com sensor de temperatura e Humidade" # descriçao das funçoes extras do MCU
+  device_description: ${friendly_name} - ${device_location} - ${device_extras} # descriçao do MCU
+  update_interval_wifi: "120s" # tempo em que o estado do wi-fi é actuazizado
+  device_ip: 192.168.1.112  # IP estatico atribuido ao MCU 
+
+esphome:
+  name: '${device_name}'
+  comment: '${device_description}'
+  platform: ESP8266 #integraçao no Home assistant. é especifico para cada microprocessador
+  board: sonoff_th # é especifico para cada microprocessador
+
+# Activar os  logs 
+# DEBUG - (Default) - Color: cyan; 
+# INFO - errors, warnings and info - Color: green;
+# VERBOSE - Like debug, but a few more messages - Color: grey
+# WARN - warnings and errors are logged - Color: yellow
+logger:
+  level: DEBUG # no inicio serve para ver se os dados estáo a ser os pretendidos, depois mudamos para "info"
+
+# Activa a API do Home Assistant
+api:
+  encryption:
+    key: !secret api_key_candeeiro  # estes dados são lidos de um outro ficheiro por questões de segurança
+
+ota:
+  password: !secret ota_password_esp # estes dados são lidos de um outro ficheiro por questões de segurança
+
+wifi:
+  ssid: !secret wifi_ssid  # estes dados são lidos de um outro ficheiro por questões de segurança
+  password: !secret wifi_password  # estes dados são lidos de um outro ficheiro por questões de segurança
+  manual_ip: # usa um IP estático em vez de DHCP
+    static_ip: '${device_ip}' # vai buscar a substitutions:
+    gateway: 192.168.1.1 # gateway do ISP: NOS 192.168.1.1 ; MEO 192.168.1.254 ou outra personalizada
+    subnet: 255.255.255.0 # subnet para uso geral
+    dns1: !secret dns1_ip
+    dns2: !secret dns2_ip
+
+  # Activa um hotspot de erro (captive portal) no caso de ligação Wi-Fi falhar, podemos depois usar esta rede para ligarmos ao MCU
+  ap:
+    ssid: "${device_name}" #vai buscar a substitutions:
+    password: !secret wifi_ap_password  # estes dados são lidos de um outro ficheiro por questões de segurança
+
+captive_portal:
+# Sincroniza as horas com o Home Assistant
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+
+binary_sensor:  # sensor binário ligado ao GPIO0 (botão branco redondo )
+  - platform: gpio
+    pin:
+      number: GPIO0 #Botao fisico liga e desliga o relé e serve para colocar em mode de programação
+      mode:
+        input: true # define este GPIO como input
+        pullup: true # define este GPIO como HIGHT
+      inverted: true # define este GPIO como invertido, ou seja quando está ligado aparace como desligado e vice-versa
+    name: ${friendly_name} - ${device_location} Botao # o nome do GPIO aparece como " Candeeiro Escritorio Botao"
+    on_press:
+      - switch.toggle: luz_candeeiro
+
+#    pin:
+#      number: GPIO4 # Para implementar num futuro / Pode ser utilizado para I2C - SDA  
+#                      Externo 3,3v anel1 GND anel2 SDA Ponta SCL
+#    name: ${friendly_name} - ${device_location} Sensor PIR"
+#    device_class: motion
+
+switch: # relé ligado ao GPIO12
+  - platform: gpio
+    name: ${friendly_name} - ${device_location} Relé
+    pin: GPIO12 # relé que está no equipamento sonoff
+    id: rele_sonoff
+    restore_mode: RESTORE_DEFAULT_OFF
+###
+  - platform: restart # cria um botao no home assistan para fazer o restart do MCU
+    name: ${friendly_name} Restart  # neste caso o nome será "Candeeiro Restart"
+###
+button: # cria um botao no home assistan para fazer o restart do MCU em safe mode
+  - platform: safe_mode
+    name: ${friendly_name} Restart (Safe Mode) # neste caso o nome será "Candeeiro Restart (Safe Mode)"
+###
+light: # cria uma entidade como se fosse uma 'luz' no home assistant, em vez do relé
+  - platform: binary
+    name: "Luz do Candeeiro" # nome da luz que parace no home assistant
+    output: light_output
+    restore_mode: ALWAYS_OFF # quando o MCU reinicia ou é ligado o estado desta "Light" será sempre desligado
+    id: luz_candeeiro
+output:
+  - id: light_output
+    platform: gpio
+    pin: GPIO12 # o mesmo GPIO que est+a ligado o relé
+###
+status_led: # led existente no equipamento, por defeito está ligado ao GPIO13
+  pin:
+    number: GPIO13 # Led Sonoff
+    inverted: yes
+###
+sensor: # definiçáo de sensores 
+  - platform: dht # plataforma para leitura de temperatura e humidade
+    pin: GPIO14  # Sensor de temperatura e humidade Sonoff Si7021 ligado a este GPIO14, através da ficha jack 3,5mm
+    temperature:
+      name: ${friendly_name} Temperatura # neste caso o nome será "Candeeiro Temperatura"
+    humidity:
+      name: ${friendly_name} Humidade" # neste caso o nome será "Candeeiro Humidade"
+    update_interval: 60s # tempo de actualização dos valores lidos pelo sensor, neste caso um minuto
+    model: Si7021
+###
+# Sensores de Diagnosticos
+  - platform: uptime # Reporta o tempo de actividade online, o tempo que est+a ligado
+    name: ${friendly_name} - Tempo Online
+    icon: mdi:timeline-clock
+    filters:
+      - lambda: return x / 3600.0;
+    unit_of_measurement: "horas"
+    accuracy_decimals: 2 
+
+  - platform: wifi_signal # Reporta a força do sinal WiFi em dB
+    name: ${friendly_name} - Sinal WiFi dB
+    id: wifi_signal_db
+    update_interval: ${update_interval_wifi}
+
+  - platform: copy # Reporta a força do sinal WiFi em %
+    source_id: wifi_signal_db
+    name: ${friendly_name} - Sinal WiFi %
+    filters:
+      - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
+    unit_of_measurement: " %"
+###
+text_sensor: 
+  - platform: wifi_info
+    ip_address:
+      name: ${friendly_name} - IP
+      icon: mdi:ip-network
+      update_interval: ${update_interval_wifi}
+    ssid:
+      name: ${friendly_name} - SSID
+      icon: "mdi:wifi-settings"
+      update_interval: ${update_interval_wifi}
+    mac_address:
+      name: ${friendly_name} - MAC
+      icon: "mdi:network-outline"
+    #
+  - platform: version
+    name: Versao

@@ -1,0 +1,31 @@
+# Loads default set of integrations. Do not remove.
+default_config:
+
+tts:
+  - platform: google_translate
+    language: "pt"
+    service_name: google_say
+    cache: true
+    cache_dir: /tmp/tts
+    time_memory: 300
+
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+lovelace: !include lovelace.yaml
+sensor: !include sensors.yaml
+
+# Cloudflare tunel
+http:
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - 172.30.33.0/24
+
+# 
+bluetooth:
+
+
+
+
+
