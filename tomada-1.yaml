@@ -44,7 +44,7 @@ status_led:
 output:
   - platform: gpio
     pin: GPIO00
-    inverted: False #true
+    inverted: False
     id: led
 
 switch:
