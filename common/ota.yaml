@@ -1,0 +1,33 @@
+---
+# OTA (Over The Air) component
+#
+# Contains my common Wi-Fi setup.
+#
+# https://esphome.io/components/ota/esphome
+#
+substitutions:
+  ota_password: "${device_ota_key}"
+
+ota:
+  - platform: esphome
+    id: component_ota
+    password: "${device_ota_key}"
+    #    reboot_timeout: 10min
+    #    num_attempts: 5
+
+    on_begin:
+      then:
+        - logger.log: "OTA start"
+    on_progress:
+      then:
+        - logger.log:
+            format: "OTA progress %0.1f%%"
+            args: ["x"]
+    on_end:
+      then:
+        - logger.log: "OTA end"
+    on_error:
+      then:
+        - logger.log:
+            format: "OTA update error %d"
+            args: ["x"]

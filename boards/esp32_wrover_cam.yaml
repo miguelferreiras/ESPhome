@@ -1,0 +1,12 @@
+---
+# ESP32 WROVER E CAM
+#
+# An ESP32-based board with 4MB flash, Wi-Fi & Bluetooth
+#
+# https://www.wemos.cc/en/latest/d32/d32.html
+#
+esp32:
+  board: esp-wrover-kit
+  framework:
+    type: arduino
+    version: recommended

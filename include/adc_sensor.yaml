@@ -1,0 +1,17 @@
+#sensor:
+  - platform: adc
+    pin: A0
+    id: adc_sensor
+
+# sensor:
+  - platform: ct_clamp
+    sensor: adc_sensor
+    name: "Measured Current"
+    update_interval: 20s
+    filters:
+      - calibrate_linear:
+          # Measured value of 0 maps to 0A
+          - 0 -> 0
+          # Known load: 3.84A
+          # Value shown in logs: 0.00983A
+          - 0.00983 -> 3.84

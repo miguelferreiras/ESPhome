@@ -1,0 +1,19 @@
+---
+# WiFi Signal Sensor
+#
+# The wifi_signal sensor platform allows you to read the signal strength of the
+# currently connected WiFi Access Point.
+#
+# https://esphome.io/components/sensor/wifi_signal.html
+#
+substitutions:
+  update_interval_wifi: "120s"
+#  device_update_wifi: "120s"
+
+platform: wifi_signal
+id: sensor_wifi_signal
+name: Sinal Wi-Fi db
+entity_category: diagnostic
+state_class: measurement
+disabled_by_default: false
+update_interval: ${update_interval_wifi}

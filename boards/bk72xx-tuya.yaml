@@ -1,0 +1,11 @@
+---
+# Fita de LEDS com controlo incluido Ndis
+#
+# A Tuya based NDIS led controler CHIP Beken BK7231N
+#
+# https://github.com/libretiny-eu/esphome-hass-addon/pkgs/container/libretiny-esphome-hassio
+#
+# https://docs.libretiny.eu/boards/generic-bk7231n-qfn32-tuya/
+
+bk72xx:
+  board: generic-bk7231n-qfn32-tuya

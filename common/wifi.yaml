@@ -1,0 +1,27 @@
+---
+# Wi-Fi component package
+#
+# Contains my common Wi-Fi setup.
+#
+# https://esphome.io/components/wifi.html
+#
+#substitutions:
+#  static_ip_esp: !secret ip_teste
+
+wifi:
+  id: component_wifi
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  manual_ip:
+    static_ip: "${device_ip_addr}"
+    gateway: !secret wifi_iot_gateway
+    subnet: !secret wifi_iot_subnet
+    dns1: !secret dns1_ip
+    dns2: !secret dns2_ip
+  reboot_timeout: 10min
+  ap:
+    ssid: "${device_name} AP"
+    password: !secret wifi_ap_password
+
+text_sensor:
+  - <<: !include ../text_sensors/wifi_info.yaml

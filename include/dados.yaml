@@ -1,0 +1,25 @@
+# Incluir <<: !include include/dados.yaml no device.yaml correspondente
+esphome:
+  name: $devicename
+  # ...
+
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: ${friendly_name} - IP
+      icon: mdi:ip-network
+      update_interval: ${update_interval_wifi}
+    ssid:
+      name: ${friendly_name} - SSID
+      icon: "mdi:wifi-settings"
+      update_interval: ${update_interval_wifi}
+    mac_address:
+      name: ${friendly_name} - MAC
+      icon: "mdi:network-outline"
+    #
+  - platform: version
+    name: Versao

@@ -1,0 +1,8 @@
+# Incluir <<: !include include/dados.yaml no device.yaml correspondente
+esphome:
+  name: $devicename
+# ...
+platform: wifi_signal # Reporta a força do sinal WiFi em dB
+name: ${friendly_name} - Sinal WiFi dB
+id: wifi_signal_db
+update_interval: ${update_interval_wifi}

@@ -1,0 +1,21 @@
+---
+# Logger component
+#
+# The logger component automatically logs all log messages through the serial
+# port and through MQTT topics.
+#
+# https://esphome.io/components/logger.html
+#
+logger:
+  id: component_logger
+  # Disabling logging over UART by default.
+  # Some devices this is needed, and in general,
+  # I really don't look at it.
+  baud_rate: 0
+  # Enable logging
+  # DEBUG or null - (Default) - Color: cyan;
+  # INFO - errors, warnings and info - Color: green;
+  # VERBOSE - Like debug, but a few more messages - Color: grey
+  # WARN - warnings and errors are logged - Color: yellow
+  level: info
+#  level: DEBUG

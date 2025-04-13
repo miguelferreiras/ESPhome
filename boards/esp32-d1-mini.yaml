@@ -1,0 +1,9 @@
+---
+# Wemos D1 Mini ESP32
+#
+# An ESP32-based board with 4MB flash, Wi-Fi & Bluetooth
+#
+# https://www.wemos.cc/en/latest/d32/d32.html
+#
+esp32:
+  board: wemos_d1_mini32

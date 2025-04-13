@@ -1,0 +1,10 @@
+#versao Firmare Esphome
+# https://esphome.io/components/text_sensor/version.html
+
+---
+# Example configuration entry
+text_sensor:
+  - platform: version
+    id: versao_esphome
+    name: "Versão ESPHOME"
+    hide_timestamp: true

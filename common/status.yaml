@@ -1,0 +1,7 @@
+# https://esphome.io/
+---
+# Example configuration entry
+binary_sensor:
+  - platform: status
+    name: Estado ${device_addr}
+    id: device_status

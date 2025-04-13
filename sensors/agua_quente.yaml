@@ -1,0 +1,24 @@
+# Using a Template to Change a Sensor's Icon in Home Assistant
+# Using the Template structure
+- platform: template
+  sensors:
+    # Give the sensor a name
+    agua_quente_state:
+      # Provide a friendly name
+      friendly_name: Temperatura da agua
+      # Set the state based on the state of a seperate sensor
+      value_template: >-
+        {% if is_state('switch.termoacumulador_rele', 'on') %}
+          Aquecendo a agua
+        {% else %}
+          Tem agua quente
+        {% endif %}
+      # Set the icon based on state of a seperate sensor
+      icon_template: >-
+        # Define which icon to use for the state ON
+        {% if is_state('switch.termoacumulador_rele', 'on') %}
+          mdi:fire-circle
+        # Define the icon for all other states (include OFF)
+        {% else %}
+          mdi:shower-head
+        {% endif %}

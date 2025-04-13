@@ -1,0 +1,21 @@
+---
+# ESPHome Core configuration
+#
+# Sets the defaults for the main core configuration of my ESPHome devices.
+#
+# https://esphome.io/components/esphome.html
+
+# descriçao do MCU / Projecto nome e versão
+
+substitutions:
+  device_description: ${friendly_name} - ${device_location} - ${device_extras}
+  projecto: "mig26.${device_name}"
+  versao: !secret esphome_version
+
+esphome:
+  name: "${device_name}"
+  comment: "${device_description}"
+  area: "${device_location}"
+  project:
+    name: "${projecto}"
+    version: "${versao}"

@@ -1,0 +1,45 @@
+---
+# I²C Bus
+#
+# This component sets up the I²C bus for the ESP32.
+#
+# https://esphome.io/components/i2c.html
+#
+# sda (Optional, Pin):
+# The pin for the data line of the I²C bus.
+# Defaults to the default of your board (usually GPIO21 for ESP32).
+#
+# scl (Optional, Pin):
+# The pin for the clock line of the I²C bus.
+# Defaults to the default of your board (usually GPIO22 for ESP32).
+#
+# scan (Optional, boolean): If ESPHome should do a search of the I²C address space on startup. Defaults to true.
+#
+# frequency (Optional, float): Set the frequency the I²C bus should operate on. Defaults to 50kHz.
+# Values are 10kHz, 50kHz, 100kHz, 200kHz, … 800kHz
+#
+# id (Optional, ID): Manually specify the ID for this I²C bus if you need multiple I²C buses.
+
+#
+i2c:
+  sda: GPIO21
+  scl: GPIO22
+#  scan: true
+#  id: bus_a
+#  frequency: 200kHz # Seems to work fine, default is 50kHz, you can play with this
+
+# Example configuration entry
+# i2c:
+#   - id: bus_a
+#     sda: 13
+#     scl: 16
+#     scan: true
+#   - id: bus_b
+#     sda: 14
+#     scl: 15
+#     scan: true
+# Sensors should be specified as follows
+#- platform: bme680
+#  i2c_id: bus_b
+#  address: 0x76
+# ...

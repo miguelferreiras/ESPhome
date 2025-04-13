@@ -1,0 +1,46 @@
+---
+# ESP8266 UART
+#
+# UART0 may use either
+# tx_pin: GPIO1 and rx_pin: GPIO3,
+# or tx_pin: GPIO15 and rx_pin: GPIO13
+
+# ESP8266 tx_pin: TX - rx_pin: RX
+# ESP8266 tx_pin: GPIO1 - rx_pin: GPIO3
+
+uart:
+id: esp8266_uart
+tx_pin: GPIO1 # TX
+rx_pin: GPIO3 # RX
+baud_rate: 9600
+parity: NONE
+stop_bits: 1
+
+select:
+  - id: change_baud_rate
+    name: Baud rate
+    platform: template
+    options:
+      - "2400"
+      - "9600"
+      - "38400"
+      - "57600"
+      - "115200"
+      - "256000"
+      - "512000"
+      - "921600"
+    initial_option: "115200"
+    optimistic: true
+    restore_value: True
+    internal: false
+    entity_category: config
+    icon: mdi:swap-horizontal
+    set_action:
+      - lambda: |-
+          id(my_uart).flush();
+          uint32_t new_baud_rate = stoi(x);
+          ESP_LOGD("change_baud_rate", "Changing baud rate from %i to %i",id(my_uart).get_baud_rate(), new_baud_rate);
+          if (id(my_uart).get_baud_rate() != new_baud_rate) {
+            id(my_uart).set_baud_rate(new_baud_rate);
+            id(my_uart).load_settings();
+          }
