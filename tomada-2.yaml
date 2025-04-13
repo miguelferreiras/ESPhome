@@ -116,7 +116,7 @@ sensor:
       name: "${channel_1} - Amperes"
       unit_of_measurement: "A"
       accuracy_decimals: 3
-# https://frenck.dev/calibrating-an-esphome-flashed-power-plug/
+
       filters:
         # Map from sensor -> measured value
         - calibrate_linear:
@@ -151,7 +151,7 @@ sensor:
       name: "${channel_1} - Watts"
       id: power
       unit_of_measurement: "W"
-# https://frenck.dev/calibrating-an-esphome-flashed-power-plug/
+
       filters:
         - calibrate_linear:
           - 0.0 -> 0.0
