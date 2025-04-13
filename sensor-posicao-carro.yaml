@@ -14,7 +14,7 @@ packages:
   board: !include boards/esp8266_d1_mini.yaml
 
 
-# API Key:  mm9RADUdOwCUt/VgoGw5S8v3FdY8OPx3171f1aedxyw=
+
 
 
 # Exposed switches.
