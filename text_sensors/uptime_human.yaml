@@ -1,0 +1,12 @@
+---
+# Version Text Sensor
+#
+# The version text sensor platform exposes the ESPHome version the firmware was
+# compiled against as a text sensor.
+#
+#
+
+platform: template
+name: $friendly_name Uptime
+id: uptime_human
+icon: mdi:clock-start
