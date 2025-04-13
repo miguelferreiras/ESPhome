@@ -20,8 +20,6 @@ packages:
   # I2C - sda: GPIO4 #D2 verde / scl: GPIO5 #D1 amarelo
   # Detector de presença IO LD24010 - GPIO13 Roxo 
 
-#wifi:
-#  use_address: 192.168.1.123
 
 
 switch:
