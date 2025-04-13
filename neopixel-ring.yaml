@@ -10,7 +10,7 @@ substitutions:
 esphome:
   name: '${device_name}'
   comment: '${device_description}'
-  build_path: ./projectos/${friendly_name} - ${device_location}
+#  build_path: ./projectos/${friendly_name} - ${device_location}
   platform: ESP8266
   board: d1_mini
 
