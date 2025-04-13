@@ -1,0 +1,63 @@
+substitutions:
+  device_name: "bk7231n-bulb" #nome do MCU
+  friendly_name: "BK7231N Bulb" #nome amigavel do MCU
+  device_info: "bk7231n-bulb"
+  device_location: "Hall" # lugar onde está instalado
+  device_extras: "NDIS-BK7231N Bulb - Controlo NDIS RGBCW BK7231N" # descriçao das funçoes extras do MCU
+  device_api_key: !secret api_key_bk7231n-bulb
+  device_ota_key: !secret ota_key_bk7231n-bulb
+  device_ip_addr: !secret ip_bk7231n-bulb
+  device_addr: "127"
+
+packages:
+  <<: !include_dir_named common
+  board: !include boards/bk72xx-tuya.yaml
+
+mdns:
+debug:
+  update_interval: 5s
+
+text_sensor:
+  - platform: debug
+    reset_reason:
+      name: Reset Reason
+  - platform: libretiny
+    version:
+      name: LibreTiny Version
+
+sensor:
+  - platform: uptime
+    name: Uptime
+
+output:
+  - platform: libretiny_pwm
+    id: output_red
+    pin: P8
+  - platform: libretiny_pwm
+    id: output_green
+    pin: P7
+  - platform: libretiny_pwm
+    id: output_blue
+    pin: P6
+  - platform: libretiny_pwm
+    id: output_cold
+    pin: P26
+  - platform: libretiny_pwm
+    id: output_warm
+    pin: P24
+
+light:
+  - platform: rgbww
+    id: light_rgbww
+    name: Light
+    color_interlock: true
+    cold_white_color_temperature: 6500 K
+    warm_white_color_temperature: 2700 K
+    red: output_red
+    green: output_green
+    blue: output_blue
+    cold_white: output_cold
+    warm_white: output_warm
+
+
+    

@@ -1,0 +1,663 @@
+# Sonoff THR316 Smart Temperature and Humidity Monitoring Switch
+# Assumes that a DS18B20 temperature sensor is connected
+#  Fio Cinza - 3v3
+#  cs_pin SDA: GPIO17 - laranja
+#  data_pin: GPIO5 - azul
+#  read_pin - NEOPIXELBUS: GPIO23 - amarelo
+#  write_pin - SCL: GPIO18   roxo
+substitutions:
+  device_name: "termo-cozinha-thr316" #nome do MCU
+  friendly_name: "Termoacumulador THR316" #nome amigavel do MCU
+  device_info: "Climate Termoacumulador"
+  device_location: "Cozinha" # lugar onde está instalado
+  device_extras: "Climate termoacumulador - ESP32 Sonoff THR316" # descriçao das funçoes extras do MCU
+  device_description: ${friendly_name} - ${device_location} - ${device_extras} # descriçao do MCU
+  projecto: "mig26.${device_name}"
+  versao: !secret esphome_version
+  device_api_key: !secret api_key_sonoffthr16
+  device_ota_key: !secret ota_key_esp
+  device_ip_addr: !secret ip_sonoffthr16
+  update_interval_wifi: "120s"
+  device_addr: "112"
+  ###
+  room: Termo
+  entity_heater: input_boolean.tut_thermo_fire    ### Change for your 'Heating' Entity
+  entity_cooler: input_boolean.tut_thermo_cool    ### Change for your 'Cooling' Entity
+  ### Configurar temperaturas para os Presets
+  Comfort_low: "55"
+  Eco_low: "50"
+  Away_low: "15"
+  Boost_low: "70"
+
+
+packages:
+  <<: !include_dir_named common
+  board: !include boards/esp32dev.yaml
+  i2c: !include components/i2c_esp32.yaml
+
+esphome:
+  on_boot:
+    - priority: 90
+      then:
+      # Make sure the relay is in a known state at startup
+      - switch.turn_off: relay
+      # Default to running the climate control in Home mode
+      - climate.control:
+          id: climate_control
+          preset: "Comfort"
+
+
+
+# Enable Home Assistant API
+#api:
+#  encryption:
+#    key: "ZNzMYGitW2beup1NKPZ98RF6wWlkyVnIiePEHaB2Olk="
+
+#ota:
+#  password: "1cf0a8df064a4de0520a2d2b4bcb28c8"
+
+
+logger:
+  level: DEBUG
+#  baud_rate: 0
+
+i2c:
+  sda: 17
+  scl: 18
+  scan: true
+  frequency: 400kHz
+
+pcf8574:
+  - id: 'pcf8574_hub'
+    address: 0x3f
+    pcf8575: false
+
+sensor:
+  - platform: template
+    name: $friendly_name Temp_ESP32
+    device_class: temperature
+    unit_of_measurement: °C
+    id: esp32_temp
+    lambda: return temperatureRead();
+
+  # External DS18B20 Digital Temperature Sensor
+  - platform: dallas_temp
+    name: Temperatura da Agua
+    id: temp
+    device_class: "temperature"
+    state_class: "measurement"
+    # Optional variables:
+    unit_of_measurement: "°C"
+    icon: "mdi:water-thermometer"
+    accuracy_decimals: 2
+    filters:
+        - heartbeat: 5s
+
+#  - platform: homeassistant
+#    id: internal_humidity
+#    entity_id: sensor.humidade_do_wc 
+
+#  - platform: homeassistant
+#    id: preset_modes
+#    entity_id: sensor.preset_modes
+
+
+
+binary_sensor:
+############################  BOTAO FISICO DO THR316 ##################################
+  - platform: gpio
+    pin: GPIO00
+    id: reset
+    internal: true
+    filters:
+      - invert:
+      - delayed_off: 10ms
+    on_click:
+      - max_length: 350ms # short press to toggle the relay
+        then:
+          - switch.toggle: relay
+          # Turn off climate control
+          - climate.control:
+              id: climate_control
+              mode: "OFF"
+          - light.turn_off: preset_led
+      - min_length: 360ms # long press to toggle climate control
+        max_length: 3s
+        then:
+          - if:
+              condition:
+                lambda: |-
+                  return id(climate_control).mode == CLIMATE_MODE_OFF;
+              then:
+                # We need to turn off realy due to a bug in the climate component. If the relay is on and climate control is
+                # turned on in idle mode (target temp < set temp) the relay will not be turned off automatically. It works fine if
+                # the climate control is turned on in heat mode (target temp > set temp), i.e. the relay will be turned on.
+                - switch.turn_off: relay
+                - climate.control:
+                    id: climate_control
+                    mode: "HEAT"
+              else:
+                climate.control:
+                  id: climate_control
+                  mode: "OFF"
+############################  BOTAO DO PCF8574 ##################################
+  - platform: gpio
+    id: botao_p3
+    name: Botao pcf8574 P3
+    internal: False #True
+    pin:
+      pcf8574: pcf8574_hub
+      number: 3
+      mode:
+        input: true
+      inverted: false
+    filters:
+      - invert:
+      - delayed_off: 10ms
+    on_click:
+      - max_length: 350ms # short press to toggle the relay
+        then:
+          - switch.toggle: relay
+          # Turn off climate control
+          - climate.control:
+              id: climate_control
+              mode: "OFF"
+          - light.turn_off: preset_led
+
+      - min_length: 360ms # long press to toggle climate control
+        max_length: 3s
+        then:
+          - if:
+              condition:
+                lambda: |-
+                  return id(climate_control).mode == CLIMATE_MODE_OFF;
+              then:
+                # We need to turn off realy due to a bug in the climate component. If the relay is on and climate control is
+                # turned on in idle mode (target temp < set temp) the relay will not be turned off automatically. It works fine if
+                # the climate control is turned on in heat mode (target temp > set temp), i.e. the relay will be turned on.
+                - switch.turn_off: relay
+                - climate.control:
+                    id: climate_control
+                    mode: "HEAT"
+              else:
+                climate.control:
+                  id: climate_control
+                  mode: "OFF"
+  #              - light.turn_off: preset_led
+############################  BOTAO P# DO PCF8574 ##################################
+
+
+########################## COMFORT _ PRESET ###################################
+  - platform: gpio
+    id: preset_confort
+    name: Preset Comfort
+    internal: True
+    pin:
+      pcf8574: pcf8574_hub
+      number: 4
+      mode:
+        input: true
+      inverted: false
+    filters:
+      - invert:
+      - delayed_off: 10ms
+    on_click:
+      - max_length: 350ms # short press to toggle 
+        then:
+          - if:
+              condition:
+                lambda: |-
+                  return id(climate_control).preset != CLIMATE_PRESET_COMFORT;
+              then:
+                - climate.control:
+                    id: climate_control
+                    mode: "HEAT"
+                    preset: "Comfort"
+                - light.addressable_set:
+                    id: preset_led
+                    range_from: 0
+                    range_to: 2
+                    red: 0%
+                    green: 0%
+                    blue: 100%
+                    color_brightness: 23%
+
+########################## ECO _ PRESET ###################################
+  - platform: gpio
+    id: preset_eco
+    name: Preset Eco
+    internal: True
+    pin:
+      pcf8574: pcf8574_hub
+      number: 5
+      mode:
+        input: true
+      inverted: false
+    filters:
+      - invert:
+      - delayed_off: 10ms
+    on_click:
+      - max_length: 350ms # short press to toggle 
+        then:
+          - if:
+              condition:
+                lambda: |-
+                  return id(climate_control).preset != CLIMATE_PRESET_ECO;
+              then:
+                - climate.control:
+                    id: climate_control
+                    mode: "HEAT"
+                    preset: "Eco"
+                - light.addressable_set:
+                    id: preset_led
+                    range_from: 0
+                    range_to: 2
+                    red: 0%
+                    green: 100%
+                    blue: 0%
+                    color_brightness: 23%
+
+########################## AWAY _ PRESET ###################################
+
+  - platform: gpio
+    id: preset_away
+    name: Preset Ausente
+    internal: True
+    pin:
+      pcf8574: pcf8574_hub
+      number: 6
+      mode:
+        input: true
+      inverted: false
+    filters:
+      - invert:
+      - delayed_off: 10ms
+    on_click:
+      - max_length: 350ms # short press to toggle 
+        then:
+          - if:
+              condition:
+                lambda: |-
+                  return id(climate_control).preset != CLIMATE_PRESET_AWAY;
+              then:
+                - climate.control:
+                    id: climate_control
+                    mode: "HEAT"
+                    preset: "Away"
+                - light.addressable_set:
+                    id: preset_led
+                    range_from: 0
+                    range_to: 2
+                    red: 50%
+                    green: 60%
+                    blue: 10%
+                    color_brightness: 23%
+########################## BOOST TURBO _ PRESET ###################################
+  - platform: gpio
+    id: preset_boost
+    name: Preset Turbo
+    internal: True
+    pin:
+      pcf8574: pcf8574_hub
+      number: 7
+      mode:
+        input: true
+      inverted: false
+    filters:
+      - invert:
+      - delayed_off: 10ms
+    on_click:
+      - max_length: 350ms # short press to toggle 
+        then:
+          - if:
+              condition:
+                lambda: |-
+                  return id(climate_control).preset != CLIMATE_PRESET_BOOST;
+              then:
+                - climate.control:
+                    id: climate_control
+                    mode: "HEAT"
+                    preset: "Boost"
+
+                - light.addressable_set:
+                    id: preset_led
+                    range_from: 0
+                    range_to: 2
+                    red: 100%
+                    green: 0%
+                    blue: 0%
+                    color_brightness: 30%
+
+
+  - platform: template
+    id: cool
+  - platform: template
+    id: confort
+  - platform: template
+    id: eco
+  - platform: template
+    id: boost
+  - platform: template
+    id: away
+  - platform: template
+    id: fire
+
+switch:
+  - platform: gpio
+    name: $friendly_name
+    pin: GPIO21
+    id: relay
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      - delay: 500ms
+      - light.turn_on: switch_led
+#     - light.turn_on: preset_led
+      - light.addressable_set:
+          id: preset_led
+          range_from: 0
+          range_to: 2
+          red: 50%
+          green: 100%
+          blue: 50%
+          color_brightness: 23%
+
+          
+    on_turn_off:
+      - delay: 500ms
+      - light.turn_off: switch_led
+      - light.turn_off: preset_led
+
+
+  # This is needed to power the external sensor DS18B20.  # It receives 3v3 from this pin, which is pulled up on boot.
+  - platform: gpio
+    pin: GPIO27
+    id: sensor_power
+    restore_mode: ALWAYS_ON
+
+  - platform: template
+    id: heat_cool
+    optimistic: true
+
+text_sensor:
+  - platform: homeassistant
+    id: termo_presets
+    entity_id: sensor.termo_presets
+    name: Termo Presets
+
+  - platform: homeassistant
+    id: termo_mode
+    entity_id: sensor.termo_mode
+    name: Termo Mode
+
+light:
+  - platform: status_led
+    id: switch_led
+    name: $friendly_name Status
+    internal: True
+    pin:
+      number: GPIO16
+      inverted: True
+
+  - platform: status_led
+    id: wifi_status_led
+    name: $friendly_name WiFi
+    internal: True
+    pin:
+      number: GPIO15
+      inverted: True
+
+  - platform: status_led
+    id: auto_led
+    name: $friendly_name Auto
+    internal: True
+    pin:
+      number: GPIO13
+      inverted: True
+### apagar
+  - platform: status_led
+    id: red_led
+    name: red_led
+    internal: True
+    pin:
+      pcf8574: pcf8574_hub
+      number: 0
+      mode:
+        output: true
+      inverted: false
+#######################################################
+  - platform: neopixelbus
+    type: GRB
+    variant: WS2811
+    pin: GPIO23  
+    num_leds: 3 
+    name: Preset LED
+    icon: mdi:floor-lamp
+    id: preset_led
+
+#######################################################
+interval:
+  - interval: 30s
+    then:
+      if:
+        condition:
+          wifi.connected:
+        then:
+          - light.turn_on: wifi_status_led
+        else:
+          - light.turn_off: wifi_status_led
+
+# DS18B20 Digital Temperature Sensor Hub
+one_wire:
+  - platform: gpio
+    pin: GPIO25
+
+# The one_wire component allows you to use supported 1-Wire devices in ESPHome.
+# The 1-Wire bus the devices are connected to should have an external pullup resistor of about 4.7KΩ. For this,
+# connect a resistor of about 4.7KΩ between 3.3V and the data pin.
+# Values ± 1KΩ will, in most cases, work fine as well, if you don’t have massively long wires.
+
+climate:
+  - platform: thermostat
+    id: climate_control
+    name: Termoacumulador
+    sensor: temp
+
+    visual:
+      min_temperature: 10C
+      max_temperature: 70C
+      temperature_step:
+
+        target_temperature: 0.5
+        current_temperature: 0.5
+    min_heating_off_time: 2s
+    min_heating_run_time: 2s
+    min_idle_time: 2s
+    heat_deadband: 0.5  # how many degrees can we go under the temp before starting to heat
+    heat_overrun: 0.5  # how many degrees can we go over the temp before stopping
+
+    heat_action:
+      - switch.turn_on: relay
+      - lambda: id(cool).publish_state(true);  ## //estava em false
+      - lambda: id(confort).publish_state(true);  ## //estava em false
+      - lambda: id(fire).publish_state(true);
+      - lambda: id(eco).publish_state(true);  ## //estava em false
+
+
+    idle_action:
+      - switch.turn_off: relay
+      - light.turn_off: preset_led
+      - lambda: id(cool).publish_state(false);
+      - lambda: id(confort).publish_state(false);
+      - lambda: id(fire).publish_state(false);
+      - lambda: id(eco).publish_state(false);
+
+    off_mode:
+      - switch.turn_off: relay
+      - light.turn_off: preset_led
+
+    default_preset: Comfort
+    preset:
+      - name: Comfort
+        id: comfort_preset
+        default_target_temperature_low: $Comfort_low
+        mode: heat
+#
+      - name: Boost
+        id: boost_preset
+        default_target_temperature_low: $Boost_low
+        mode: heat
+#
+      - name: Eco
+        id: eco_preset
+        default_target_temperature_low: $Eco_low
+        mode: heat
+#
+      - name: Away
+        id: away_preset
+        default_target_temperature_low: $Away_low
+        mode: Heat
+#
+    on_state:
+    - if:
+        condition:
+          lambda: |-
+            return id(climate_control).mode == CLIMATE_MODE_OFF;
+        then:
+          - light.turn_off: auto_led
+          - light.turn_off: preset_led
+    - if:
+        condition:
+          lambda: |-
+            return id(climate_control).mode == CLIMATE_MODE_HEAT;
+        then:
+          - light.turn_on: auto_led
+#################################################
+#          - light.addressable_set:
+#              id: preset_led
+#              range_from: 0
+#              range_to: 2
+#              red: 100%
+#              green: 0%
+#              blue: 0%
+#          - light.turn_on: green_led
+          - binary_sensor.template.publish:
+              id: confort
+              state: !lambda 'return id(termo_presets).state.c_str();'
+#          - binary_sensor.template.publish:
+#              id: eco
+#              state: !lambda 'return id(termo_presets).state.c_str();'
+#          - binary_sensor.template.publish:
+#              id: away
+#              state: !lambda 'return id(termo_presets).state.c_str();'
+#          - binary_sensor.template.publish:
+#              id: boost
+#              state: !lambda 'return id(termo_presets).state.c_str();'
+
+
+
+display:
+  - platform: ssd1306_i2c
+    id: oled1
+    update_interval: 1.0s
+    contrast: 50% # 0.4
+#    model: "SH1106 128x64" # // modelo 0,96"
+    model: "SH1106 128x64" # // modelo 1,3"
+    rotation: 0
+    address: 0x3C
+    lambda: |-
+      if (id(fire).state) {id(ani_fire).next_frame(); it.image(0, 15, id(ani_fire));}
+      else if (id(cool).state) {id(ani_fan).next_frame(); it.image(0, 15, id(ani_fan));}
+      else {it.image(0, 15, id(off_icon));}
+
+      it.print(60, 0,  id(font4), TextAlign::TOP_CENTER, "${friendly_name}");
+
+      it.printf(62, 17, id(font5), TextAlign::TOP_CENTER, " %.1f°C", id(temp).state);
+
+      it.printf(1, 61, id(font3), TextAlign::BASELINE_LEFT, "%s" , id(termo_mode).state.c_str() );
+      it.printf(128, 61, id(font3), TextAlign::BASELINE_RIGHT, "%s" , id(termo_presets).state.c_str() );
+
+#      if (id(termo_presets).state) return CLIMATE_PRESET_COMFORT, {id(confort_icon).next_frame(); it.image(0, 25, id(confort_icon));}
+#      else {it.image(56, 51, id(arrow_left));}
+#      if (id(termo_presets).state) == Confort, {id(confort_icon).next_frame(); it.image(0, 25, id(confort_icon));}
+#      if (id(termo_presets).state) == Eco, {id(eco_icon).next_frame(); it.image(0, 25, id(eco_icon));}
+#      if (id(termo_presets).state) == Boost, {id(boost_icon).next_frame(); it.image(0, 25, id(boost_icon));}
+#      if (id(termo_presets).state) == Away, {id(away_icon).next_frame(); it.image(0, 25, id(away_icon));}
+#      else {it.image(56, 51, id(arrow_left));}
+
+##comfort_preset
+
+##         if (id(termo_presets).state.c_str() == Comfort) {id(confort_icon).next_frame(); it.image(0, 15, id(confort_icon));}
+
+#      else if (id(confort).state) it.image(0, 25, id(confort_icon));}
+#      else if (id(eco).state) it.image(0, 25, id(eco_icon));}
+#      else if (id(boost).state) it.image(0, 25, id(boost_icon));}
+#      else if (id(confort).state) it.image(0, 25, id(away_icon));}
+
+#      it.printf(1, 64, id(font3), TextAlign::BASELINE_LEFT, "%", id(climate_control).action);
+#      it.printf(128, 64, id(font3), TextAlign::BASELINE_RIGHT, "%s", id(climate_control).mode);
+
+#  it.printf(15, 0,  id(font1), TextAlign::TOP_LEFT, "%s" , id(clim_stat).state.c_str() );
+
+#      if (id(brightness).state) {it.image(56, 51, id(bulb));} 
+#      else if (id(heat_cool).state) {it.image(56, 51, id(arrow_right));}
+#      else {it.image(56, 51, id(arrow_left));}
+
+##  it.printf(62, 15, id(font5), TextAlign::TOP_CENTER, " %.1f°C", id(temp).state);
+##  it.printf(1, 64, id(font3), TextAlign::BASELINE_LEFT, "%.1f°", id(climate_control).target_temperature_low);
+##  it.printf(128, 64, id(font3), TextAlign::BASELINE_RIGHT, "%.1f°", id(climate_control).preset);
+
+
+#      it.image(70, 0, id(humid));
+#      it.printf(128, 0,  id(font4), TextAlign::TOP_RIGHT, " %.1f%% ", id(internal_humidity).state); 
+
+##   it.image(it.get_width(), 0, id(my_image), ImageAlign::TOP_RIGHT);
+#      it.printf(128, 0,  id(font4), TextAlign::TOP_RIGHT, " %.1f%% ", id(internal_humidity).state); 
+
+animation:
+  - file: "_icons/thermostat/fan.gif"
+    id: ani_fan
+  - file: "_icons/thermostat/fire.gif"
+    id: ani_fire
+image:
+  - file: "_icons/thermostat/home-thermometer.png"
+    id: home_thermometer
+  - file: "_icons/thermostat/arrow-left-circle-outline.png"
+    id: arrow_left
+  - file: "_icons/thermostat/arrow-right-circle-outline.png"
+    id: arrow_right
+  - file: "_icons/thermostat/lightbulb-on-outline.png"
+    id: bulb
+  - file: "_icons/thermostat/humidade.png"
+    id: humid
+  - file: "_icons/thermostat/temperatura.png"
+    id: temp_img
+  - file: "_icons/thermostat/confort_icon.png"
+    id: confort_icon
+  - file: "_icons/thermostat/eco_icon.png"
+    id: eco_icon
+  - file: "_icons/thermostat/boost_icon.png"
+    id: boost_icon
+  - file: "_icons/thermostat/away_icon.png"
+    id: away_icon
+  - file: "_icons/thermostat/on_icon.png"
+    id: on_icon
+  - file: "_icons/thermostat/off_icon.png"
+    id: off_icon
+
+
+font:
+  - file: "_fonts/nasalization.ttf"
+    id: font1
+    size: 12
+  - file: "_fonts/refsan.ttf"
+    id: font2
+    size: 42
+  - file: "_fonts/refsan.ttf"
+    id: font3
+    size: 13
+  - file: "_fonts/refsan.ttf"
+    id: font4
+    size: 10
+  - file: "_fonts/digital_counter_7.ttf"
+    id: font5
+    size: 30

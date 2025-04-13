@@ -1,0 +1,263 @@
+substitutions:
+  device_name: "lampada-hall" #nome do MCU
+  friendly_name: "Hall" #nome amigavel do MCU
+  device_info: "Luz do Hall"
+  device_location: "Hall" # lugar onde está instalado
+  device_extras: "LEDs RGB enderessaveis SSR - ESP8266 D1 Mini Pro" # descriçao das funçoes extras do MCU
+  device_api_key: !secret api_key_lampada-hall
+  device_ota_key: !secret ota_key_esp
+  device_ip_addr: !secret ip_lampada-hall
+  device_addr: "120"
+
+###  ESPECIFICO PARA SENSOR DE PRESENÇA LD2410 UART
+  target_device_1: led_rgb_hall  # id do dispositivo 1 a ser controlado Lampadas ou relés ou outro
+  target_device_2: luz_tecto_hall # id do dispositivo 2 a ser controlado Lampadas ou relés ou outro
+  target_name: ${device_info}
+  tx_pin: GPIO16 # Pin TX  - UART2-> tx_pin: GPIO17 - Verde  INVERTIDO NO SENSOR LD2410B
+  rx_pin: GPIO17 # Pin RX  - UART2-> rx_pin: GPIO16 - Amarelo INVERTIDO NO SENSOR LD2410B
+####
+
+
+packages:
+  <<: !include_dir_named common
+  board: !include boards/esp32-d1-mini.yaml
+  ld2410 <<: !include devices/ld2410.yaml
+
+  # 5v Vermelho - GND Preto e Castanho
+  # Luz 220V SSR - 5v Vermelho - GND Preto 
+  # GPIO18 SSR1 Roxo 
+  # GPIO19 LEDS Laranja
+  # I2C - sda: GPIO21 / scl: GPIO225 Nao instalado
+  # Detector de presença UART LD24010 - TX GPIO17 Verde /  RX GPIO16 Amarelo INVERTIDO NO SENSOR LD2410B
+
+
+# Detector de presença LD2410C usando UART
+binary_sensor:
+  ##
+  - platform: ld2410
+    has_target:
+      name: "1 Presença ${target_name}"
+      id: alvo_detetado
+      device_class: occupancy
+
+    has_moving_target:
+      name: "3 Alvo movimento ${target_name}"
+      id: alvo_movimento
+      device_class: moving
+
+    has_still_target:
+      name: "2 Alvo fixo ${target_name}"
+      id: alvo_fixo
+      device_class: occupancy
+      on_press:
+        then:
+          - if:
+              condition:
+                and:
+                  #- binary_sensor.is_on: alvo_fixo
+                  - binary_sensor.is_on: alvo_detetado
+                  - light.is_off: "${target_1}"
+                  #- lambda: |-
+                  #    return id(energia_alvo_parado).state > 60;
+              then:
+                - light.turn_on:
+                    id: "${target_1}"
+                    effect: "Wipe In"
+                    red: 100%
+                    green: 100%
+                    blue: 100%
+                    brightness: 95%
+      on_release:
+        then:
+          - if:
+              condition:
+                and:
+                  - binary_sensor.is_off: alvo_detetado
+                  - binary_sensor.is_off: alvo_fixo
+                  #- light.is_off: "${target_2}"
+                  #- lambda: |-
+                  #    return id(energia_alvo_parado).state < 20;
+              then:
+                - if:
+                    condition:
+                      and:
+                        light.is_on: "${target_1}"
+                    then:
+                      - light.turn_on:
+                          id: "${target_1}"
+                          effect: "Wipe Out"
+                      - delay: 350ms 
+                      - light.turn_off: "${target_1}"
+
+
+    out_pin_presence_status:
+      name: "Out Pin ${target_name}" # out pin presence status
+      id: out_pin_status
+      device_class: occupancy
+
+# interruptar do hall
+
+  - platform: gpio
+    pin:
+      number: GPIO23
+      inverted: true
+      mode: INPUT_PULLUP
+    name: Botao do Hall
+    id: interruptordohall
+    icon: mdi:electric-switch
+    internal: False
+###############################
+    filters:
+      - delayed_on: 30ms
+      - delayed_off: 30ms
+    on_multi_click:
+      # Um toque
+      - timing:
+        - ON for at most 1s
+        - OFF for at least 0.55s
+        then:
+          - if:
+              condition:
+                and:
+                  - light.is_off: "${target_1}"
+              then:
+                  - light.turn_on:
+                      id: "${target_1}"
+              else:
+                - light.turn_off:
+                    id: "${target_1}"
+
+##### 2 toques
+      - timing:
+          - ON for at most 1s
+          - OFF for at most 0.25s
+          - ON for at most 1s
+          - OFF for at least 0.25s
+
+        then:
+          - homeassistant.service:
+              service: light.toggle
+              data:
+                entity_id: light.led_cob
+#### 3 toques
+      - timing:
+          - ON for at most 1s
+          - OFF for at most 0.25s
+          - ON for at most 1s
+          - OFF for at most 0.25s
+          - ON for at most 1s
+          - OFF for at least 0.25s
+        then:
+          - homeassistant.service:
+              service: light.turn_on
+              data:
+                entity_id: light.todas_as_luzes
+      # Long Press
+      - timing:
+          - ON for at least 3s
+        then:
+          - homeassistant.service:
+              service: light.turn_off
+              data:
+                entity_id: light.todas_as_luzes
+
+
+
+####################################
+#switch:
+# Iluminaçao lampada branca no tecto do HALL - relé1 Azul
+#  - platform: gpio
+#    pin:
+#      number: GPIO33 #GPIO18
+#      allow_other_uses: true
+#      inverted: True
+#    internal: True # False
+#    restore_mode: ALWAYS_OFF
+#    name: "Relé Luz do Hall" # SSR 1
+#    icon: mdi:power-cycle
+#    id: iluminacao_hall
+#    device_class: switch
+
+
+light:
+  - platform: neopixelbus
+    type: GRB
+    variant: WS2811
+    pin: GPIO19
+    num_leds: 24 
+    name: "Leds Hall"
+    icon: mdi:led-strip
+    id: led_rgb_hall
+    effects:
+      - addressable_lambda:
+          name: "Wipe In"
+          update_interval: 1ms
+          lambda: |-
+            static int x = 0;
+            if (initial_run) {
+              x = 0;
+              it.all() = ESPColor(0,0,0);
+            }
+            if (x < it.size()) {
+              it[x] = current_color;
+              x += 1;
+            }
+      - addressable_lambda:
+          name: "Wipe Out"
+          update_interval: 1ms
+          lambda: |-
+            static int x = 0;
+            if (initial_run) {
+              x = it.size();
+            }
+            if (x > 0) {
+              x -= 1;
+              it[x] = ESPColor(0,0,0);
+            }      
+#    effects:
+      - pulse:
+      - pulse:
+          name: "Fast Pulse"
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0%
+          max_brightness: 100%
+      - addressable_rainbow:
+      - addressable_rainbow:
+          name: Rainbow Effect With Custom Values
+          speed: 15
+          width: 50
+
+      - addressable_color_wipe:
+      - addressable_color_wipe:
+          name: Color Wipe Effect With Custom Values
+          colors:
+            - red: 100%
+              green: 100%
+              blue: 100%
+              num_leds: 2
+            - red: 0%
+              green: 0%
+              blue: 0%
+              num_leds: 3
+          add_led_interval: 100ms
+          reverse: false
+      - addressable_scan:
+      - addressable_scan:
+          name: Scan Effect With Custom Values
+          move_interval: 70ms
+          scan_width: 3
+# Iluminaçao lampada no tecto do HALL - SSR1 Azul
+#  - platform: binary
+#    name: "Lampada Hall"
+#    output: light_output_hall
+#    restore_mode: ALWAYS_OFF
+#    id: luz_tecto_hall
+#    icon: mdi:globe-light
+#output:
+# - id: light_output_hall
+#    platform: gpio
+#    pin:
+#      number: GPIO33 #GPIO18
+#      allow_other_uses: true
+#      inverted: true

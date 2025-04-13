@@ -1,0 +1,335 @@
+substitutions:
+  device_name: "candeeiro" #nome do MCU
+  friendly_name: "Candeeiro" #nome amigavel do MCU
+  device_info: "Candeeiro"
+  device_location: "Sala de estar" # lugar onde está instalado
+  device_extras: "LEDs RGB enderessaveis com LD2410C UART - ESP32-C3" # descriçao das funçoes extras do MCU
+  device_api_key: !secret api_key_candeeiro
+  device_ota_key: !secret ota_key_candeeiro
+  device_ip_addr: !secret ip_candeeiro
+  device_addr: "118"
+
+###  ESPECIFICO PARA SENSOR DE PRESENÇA LD2410 UART
+  target_device_1: candeeiro_led_rgb  # id do dispositivo 1 a ser controlado Lampadas ou relés ou outro
+  target_device_2: ha_luz_da_sala # id do dispositivo 2 a ser controlado Lampadas ou relés ou outro
+  target_name: ${device_info}
+  tx_pin: GPIO20 # Pin TX  - UART
+  rx_pin: GPIO21 # Pin RX  - UART
+####
+
+packages:
+  <<: !include_dir_named common
+  board: !include boards/esp32-c3.yaml
+  ld2410 <<: !include devices/ld2410.yaml
+
+
+# Detector de presença LD2410C usando UART
+binary_sensor:
+  - platform: homeassistant
+    name: "luz da sala"
+    internal: True
+    entity_id: light.luz_da_sala
+    id: ha_luz_da_sala
+    on_state:
+      then:
+        - if:
+            condition:
+              and:
+                - binary_sensor.is_on: ha_presenca_na_sala
+                #- binary_sensor.is_on: alvo_detetado
+                - binary_sensor.is_on: "${target_2}"  # luz da sala
+                #- lambda: |-
+                #    return id(ha_luz_da_sala).state == off;
+            then:
+              - light.turn_off:
+                  id: "${target_1}" # luz do candeeiro
+        - if:
+            condition:
+              and:
+                - binary_sensor.is_on: ha_presenca_na_sala
+                #- binary_sensor.is_on: alvo_detetado
+                - binary_sensor.is_off: "${target_2}"
+                #- lambda: |-
+                #    return id(ha_luz_da_sala).state == off;
+            then:
+              - if:
+                  condition:
+                    or:
+                      - binary_sensor.is_on: ha_presenca_na_sala
+                      #- binary_sensor.is_on: alvo_detetado
+                  then:
+                    - light.turn_on:
+                        id: "${target_1}"
+                        effect: "Wipe In"
+                        red: 100%
+                        green: 100%
+                        blue: 100%
+                        brightness: 95%
+
+  - platform: homeassistant
+    name: "presença na sala"
+    internal: True
+    entity_id: binary_sensor.detector_presenca_presence # zigbee sensor de presença
+    id: ha_presenca_na_sala
+    on_press:
+      then:
+        - if:
+            condition:
+              and:
+                #- binary_sensor.is_on: ha_presenca_na_sala
+                #- binary_sensor.is_on: alvo_detetado
+                - binary_sensor.is_on: "${target_2}"  # luz da sala
+                #- lambda: |-
+                #    return id(ha_luz_da_sala).state == off;
+            then:
+              - light.turn_off:
+                  id: "${target_1}" # luz do candeeiro
+        - if:
+            condition:
+              and:
+                #- binary_sensor.is_on: ha_presenca_na_sala
+                #- binary_sensor.is_on: alvo_detetado
+                - binary_sensor.is_off: "${target_2}"
+                #- lambda: |-
+                #    return id(ha_luz_da_sala).state == off;
+
+            then:
+              - light.turn_on:
+                  id: "${target_1}"
+                  effect: "Wipe In"
+                  red: 100%
+                  green: 100%
+                  blue: 100%
+                  brightness: 95%
+
+    on_release:
+      then:
+        - light.turn_off:
+            id: "${target_1}" # luz do candeeiro
+        - if:
+            condition:
+              and:
+                - binary_sensor.is_off: ha_presenca_na_sala
+                #- binary_sensor.is_on: alvo_detetado
+                - binary_sensor.is_off: "${target_2}"
+                #- lambda: |-
+                #    return id(ha_luz_da_sala).state == off;
+
+            then:
+              - light.turn_off:
+                  id: "${target_1}"
+
+###############
+
+
+
+
+  ##
+  - platform: ld2410
+    has_target:
+      name: "1 Presença ${target_name}"
+      id: alvo_detetado
+      device_class: occupancy
+
+    has_moving_target:
+      name: "3 Alvo movimento ${target_name}"
+      id: alvo_movimento
+      device_class: moving
+
+
+
+##################################################################################################
+switch:
+  - platform: template
+    name: ${friendly_name} Botão
+    id: candeeiro_led_switch
+    icon: mdi:floor-lamp
+    optimistic: true
+    internal: False
+    turn_on_action:
+      - if:
+          condition:
+            light.is_off: segmento_1   
+          then:
+            - light.turn_on:
+                id: segmento_1
+                effect: "Wipe In"
+                red: 100%
+                green: 100%
+                blue: 100%
+                brightness: 95%
+      - if:
+          condition:
+            light.is_off: segmento_2
+          then:
+            - light.turn_on:
+                id: segmento_2
+                effect: "Wipe In"
+                red: 100%
+                green: 100%
+                blue: 100%
+                brightness: 95%
+    turn_off_action:
+      then:
+        - if:
+            condition:
+              and:
+                light.is_on: segmento_1
+            then:
+              - light.turn_on:
+                  id: segmento_1
+                  effect: "Wipe Out"
+              - light.turn_on:
+                  id: segmento_2
+                  effect: "Wipe Out"
+              - delay: 350ms
+              - light.turn_off: segmento_1
+              - light.turn_off: segmento_2
+
+
+light:
+## 46 LEDs enderessaveis RGB WS2811 - SEGMENTO 1  0 a 21  
+  - platform: partition
+    name: "Segmento 1"
+    id: segmento_1
+    internal: False
+    effects:
+      - addressable_lambda:
+          name: "Wipe In"
+          update_interval: 3ms
+          lambda: |-
+            static int x = 0;
+            if (initial_run) {
+              x = 0;
+              it.all() = ESPColor(0,0,0);
+            }
+            if (x < it.size()) {
+              it[x] = current_color;
+              x += 1;
+            }
+      - addressable_lambda:
+          name: "Wipe Out"
+          update_interval: 1ms
+          lambda: |-
+            static int x = 0;
+            if (initial_run) {
+              x = it.size();
+            }
+            if (x > 0) {
+              x -= 1;
+              it[x] = ESPColor(0,0,0);
+            }      
+    segments:
+      - id: candeeiro_led_rgb
+        reversed: True
+        from: 0
+        to: 21
+## SEGMENTO 2    22 a 43    
+  - platform: partition
+    name: "Segmento 2"
+    id: segmento_2
+    internal: False
+    effects:
+      - addressable_lambda:
+          name: "Wipe In"
+          update_interval: 1ms
+          lambda: |-
+            static int x = 0;
+            if (initial_run) {
+              x = 0;
+              it.all() = ESPColor(0,0,0);
+            }
+            if (x < it.size()) {
+              it[x] = current_color;
+              x += 1;
+            }
+      - addressable_lambda:
+          name: "Wipe Out"
+          update_interval: 1ms
+          lambda: |-
+            static int x = 0;
+            if (initial_run) {
+              x = it.size();
+            }
+            if (x > 0) {
+              x -= 1;
+              it[x] = ESPColor(0,0,0);
+            }      
+    segments:
+      - id: candeeiro_led_rgb
+        reversed: False
+        from: 22
+        to: 43
+## SEGMENTO NEOPIXEL 44 LEDS  
+  - platform: neopixelbus
+    type: GRB
+    variant: WS2811
+    pin: GPIO06
+    num_leds: 44 
+    name: ${friendly_name} Leds
+    icon: mdi:floor-lamp-torchiere
+    #icon: mdi:floor-lamp
+    id: candeeiro_led_rgb
+    internal: False
+    effects:
+      - addressable_lambda:
+          name: "Wipe In"
+          update_interval: 1ms
+          lambda: |-
+            static int x = 0;
+            if (initial_run) {
+              x = 0;
+              it.all() = ESPColor(0,0,0);
+            }
+            if (x < it.size()) {
+              it[x] = current_color;
+              x += 1;
+            }
+      - addressable_lambda:
+          name: "Wipe Out"
+          update_interval: 1ms
+          lambda: |-
+            static int x = 0;
+            if (initial_run) {
+              x = it.size();
+            }
+            if (x > 0) {
+              x -= 1;
+              it[x] = ESPColor(0,0,0);
+            }      
+#    effects:
+      - pulse:
+      - pulse:
+          name: "Fast Pulse"
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0%
+          max_brightness: 100%
+      - addressable_rainbow:
+      - addressable_rainbow:
+          name: Rainbow Effect With Custom Values
+          speed: 15
+          width: 50
+
+      - addressable_color_wipe:
+      - addressable_color_wipe:
+          name: Color Wipe Effect With Custom Values
+          colors:
+            - red: 100%
+              green: 100%
+              blue: 100%
+              num_leds: 2
+            - red: 0%
+              green: 0%
+              blue: 0%
+              num_leds: 3
+          add_led_interval: 100ms
+          reverse: false
+
+
+      - addressable_scan:
+      - addressable_scan:
+          name: Scan Effect With Custom Values
+          move_interval: 70ms
+          scan_width: 3
+

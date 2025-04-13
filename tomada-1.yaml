@@ -1,0 +1,150 @@
+substitutions:
+  device_name: "tomada-1-shelly" #nome do MCU
+  friendly_name: "Tomada Shelly 138" #nome amigavel do MCU
+  device_info: "Tomada Shelly 138"
+  device_location: "Sala" # lugar onde está instalado
+  device_extras: "Tomada Shelly Plug S IP138" # descriçao das funçoes extras do MCU
+  device_api_key: !secret api_key_tomada_1_shelly
+  device_ota_key: !secret ota_key_tomada_1_shelly
+  device_ip_addr: !secret ip_tomada_1_shelly
+  device_addr: "138"
+  channel_1: ${friendly_name}
+  # Higher value gives lower watt readout
+  current_res: "0.000943"
+  # Lower value gives lower voltage readout
+  voltage_div: "1783.71"
+  # measure a relatively strong load and enter values measured by the device vs the values your reference measurement provided here
+  power_cal_meas: "2000.0" # 1710.0
+  power_cal_real: "1685.0"
+
+  max_current: "10"
+  max_power: "2400"
+  max_temp: "70.0"
+  min_temp: "45.0"
+
+packages:
+  <<: !include_dir_named common
+  board: !include boards/esp8285.yaml
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO13
+      inverted: True
+    name: "${friendly_name} botao"
+    internal: True
+    on_press:
+      - switch.toggle: relay
+
+status_led:
+  pin:
+    number: GPIO02
+    inverted: True
+
+output:
+  - platform: gpio
+    pin: GPIO00
+    inverted: False #true
+    id: led
+
+switch:
+  - platform: gpio
+    pin: GPIO15
+    id: relay
+    device_class: OUTLET
+    name: "${channel_1}"
+    on_turn_on:
+      - output.turn_on: led
+    on_turn_off:
+      - output.turn_off: led
+
+sensor:
+
+  # NTC Temperature
+  - platform: ntc
+    sensor: temp_resistance_reading
+    name: ${channel_1} temperatura
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    icon: "mdi:thermometer"
+    calibration:
+      b_constant: 3350
+      reference_resistance: 10kOhm
+      reference_temperature: 298.15K
+    on_value_range:
+      - above: ${max_temp}
+        then:
+          - switch.turn_off: relay
+          - homeassistant.service:
+              service: persistent_notification.create
+              data:
+                title: AVISO de ${device_name}
+              data_template:
+                message: ${device_name} desligado por estar acima de ${max_temp}°C.
+
+  - platform: resistance
+    id: temp_resistance_reading
+    sensor: temp_analog_reading
+    configuration: DOWNSTREAM
+    resistor: 32kOhm
+  - platform: adc
+    id: temp_analog_reading
+    pin: A0
+
+  - platform: hlw8012
+    model: BL0937
+    sel_pin:
+      number: GPIO12
+      inverted: true
+    cf_pin: GPIO05
+    cf1_pin: GPIO14
+    current_resistor: ${current_res}
+    voltage_divider: ${voltage_div}
+    current:
+      name: "${channel_1} - Amperes"
+      unit_of_measurement: "A"
+      accuracy_decimals: 3
+      icon: mdi:flash-outline
+      on_value_range:
+        - above: ${max_current}
+          then:
+            - switch.turn_off: relay
+            - homeassistant.service:
+                service: persistent_notification.create
+                data:
+                  title: Notificação de ${device_name}
+                data_template:
+                  message: ${device_name} desligado devido a ter excedido os ${max_current}A
+    voltage:
+      name: "${channel_1} - Volts"
+      unit_of_measurement: "V"
+      icon: mdi:flash-outline
+      accuracy_decimals: 0
+    power:
+      name: "${channel_1} - Watts"
+      id: power
+      unit_of_measurement: "W"
+      filters:
+        - calibrate_linear:
+          - 0.0 -> 0.0
+          - ${power_cal_meas} -> ${power_cal_real}
+      icon: mdi:flash-outline
+      on_value_range:
+        - above: ${max_power}
+          then:
+            - switch.turn_off: relay
+            - homeassistant.service:
+                service: persistent_notification.create
+                data:
+                  title: Notificação de ${device_name}
+                data_template:
+                  message: ${device_name} desligado devido a ter excedido os ${max_power}W
+    update_interval: 10s
+
+  - platform: total_daily_energy
+    name: "${channel_1} energia diária"
+    power_id: power
+    filters:
+      # Multiplication factor from W to kW is 0.001
+      - multiply: 0.001
+    unit_of_measurement: kWh

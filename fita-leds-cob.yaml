@@ -1,0 +1,260 @@
+substitutions:
+  device_name: "ledscob" #nome do MCU
+  friendly_name: "Leds Cob" #nome amigavel do MCU
+  device_info: "Leds COB 24V"
+  device_location: "Sala de estar" # lugar onde está instalado
+  device_extras: "LEDs COB 4000K 24V- ESP32-C3" # descriçao das funçoes extras do MCU
+  device_api_key: !secret api_key_ledscob
+  device_ota_key: !secret ota_key
+  device_ip_addr: !secret ip_ledscob
+  device_addr: "135"
+
+packages:
+  <<: !include_dir_named common
+  board: !include boards/esp32-c3.yaml
+
+#logger:
+#  level: DEBUG
+
+output:
+  - platform: ledc
+    pin: GPIO10 # D10 - Amarelo
+    id: led_cob_out
+    zero_means_zero: False
+    min_power: 0.00
+    max_power: 0.99
+
+  - platform: gpio
+    pin: GPIO8 # D8 
+    id: green_buzzer_output
+
+  - platform: gpio
+    pin: GPIO20 # D7
+    id: red_buzzer_output
+
+light:
+  - platform: monochromatic
+    restore_mode: ALWAYS_OFF
+    output: led_cob_out
+    name: "LED COB Light"
+    id: led_cob
+    on_turn_off:
+    - light.turn_on: red_buzzer_light
+    - delay: 0.3s
+    - light.turn_off: red_buzzer_light
+
+##########
+  - platform: binary
+    #name: "green buzzer"
+    output: green_buzzer_output
+    id: green_buzzer_light
+    effects:
+      - automation:
+         name: greenbeeponce
+         sequence:
+            - light.turn_on: green_buzzer_light
+            - delay: 0.2s
+            - light.turn_off: green_buzzer_light
+      - automation:
+         name: greenbeeptwice
+         sequence:
+            - light.turn_on: green_buzzer_light
+            - delay: 0.8s
+            - light.turn_off: green_buzzer_light
+            - delay: 0.2s
+            - light.turn_on: green_buzzer_light
+            - delay: 0.8s
+            - light.turn_off: green_buzzer_light
+
+########
+  - platform: binary
+    #name: "red buzzer"
+    output: red_buzzer_output
+    id: red_buzzer_light
+    effects:
+      - automation:
+         name: redbeeponce
+         sequence:
+            - light.turn_on: red_buzzer_light
+            - delay: 0.2s
+            - light.turn_off: red_buzzer_light
+      - automation:
+         name: redbeeptwice
+         sequence:
+            - light.turn_on: red_buzzer_light
+            - delay: 0.8s
+            - light.turn_off: red_buzzer_light
+            - delay: 0.2s
+            - light.turn_on: red_buzzer_light
+            - delay: 0.8s
+            - light.turn_off: red_buzzer_light
+
+########
+globals:
+  # for "led cob" light
+  - id: led_cob_min_brightness  #set the minimum allowed brightness for "led cob" light
+    type: float
+    restore_value: no
+    initial_value: '0.05'
+  - id: led_cob_max_brightness   #set the maximum allowed brightness for "led cob" light
+    type: float
+    restore_value: no
+    initial_value: '1.0'
+  - id: led_cob_dim_direction   #remember the current dim direction for "led cob" light
+    type: int
+    restore_value: no
+    initial_value: '1'
+  - id: led_cob_loop_stop # stop the while loop upon min/max brightness
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+# Common setting dimmer steps
+  - id: step # dimmer steps
+    type: float
+    restore_value: no
+    initial_value: '0.02'
+
+
+binary_sensor:
+  # Led Cob Botao: push button to control the "led cob" light connected to GPIO 9
+  - platform: gpio
+    pin:
+      number: GPIO9
+      mode: INPUT_PULLUP
+      inverted: True
+    name: "Led Cob Botao"
+    id: led_cob_button
+    # we  use multi_click to get both single and double click
+    # single click to turn on and off (toggle)
+    # double click to set either max or min brightness: if currently off then turn on with brightness=max. If currently on, then if currently brigthness equals max then set to min, else set to max
+    on_multi_click:
+    - timing:
+      - ON for at most 1s
+      - OFF for at most 1s
+      - ON for at most 1s
+      - OFF for at least 0.2s
+      then:
+####        - logger.log: "on_multi_click: Double Clicked"
+        - if:
+           condition: 
+             light.is_off: led_cob
+           then:
+             - light.turn_on: 
+                id: led_cob
+                brightness: !lambda |-
+                  return id(led_cob_max_brightness);
+        - if:
+           condition: 
+             light.is_on: led_cob
+           then:
+             - light.turn_on: 
+                id: led_cob
+                # if currently off then turn on with brightness=max. If currently on, then if currently brigthness equals max then set to min, else set to max:
+                brightness: !lambda |-
+                  float brightness;
+                  id(led_cob).current_values_as_brightness(&brightness);
+                  if (brightness >= id(led_cob_max_brightness)) {
+                    return id(led_cob_min_brightness);
+                  }
+                  else {
+                    return id(led_cob_max_brightness);
+                  }           
+    # single click to turn on and off (toggle):
+    - timing:
+       - ON for at most 350ms
+       - OFF for at least 350ms
+      then:
+        - logger.log: "on_multi_click: single click"
+        - light.toggle: led_cob
+    # Long press to dim up and down:  
+    on_press:
+      then:
+####      - logger.log: "on_press"
+      # we need this delay (and then to look for binary_sensor.is_on) to ensure it's not a multi-click
+      - delay: 0.75s
+      - if:
+          condition: 
+            and:
+               - light.is_off: led_cob
+               - binary_sensor.is_on: led_cob_button
+          then:
+             # if the light was off we also want the long press to turn it on and then start dimming
+             - light.toggle: led_cob
+          #- delay: 0.75s
+      #
+      # this sets the globales variable that will stop the while loop from needlessly running if the buttons keeps being pressed but ar are already at max or min value
+      # it's also needed to ensure the buzzer only buzzes once and doesn't keep buzzing when the max/min is reached
+      - lambda: |-
+           id(led_cob_loop_stop) = false;
+      - while:
+          # keep on going as long as the button is pressed and when the max/min threshold is not exceeded yet (indicated by the global var of type bool)
+          condition:
+            and:
+               - binary_sensor.is_on: led_cob_button
+               - lambda: |-
+                   return(!id(led_cob_loop_stop));
+          then:
+            - light.dim_relative: 
+                  id: led_cob
+                  # This lambda will dim up or down depending on the dim direction
+                  # if dim = up, it will keep increasing brightness with global var 'step' (so we can easily change this in a central place) as long as the button keeps being pressed until max_brightness would be exceed
+                  # in the case it will set it to max brightness, beep the buzzer once (the buzzer is defined as a light with effect "beeponce") and then stop the loop - this both prevent further needless loops as well as ensures the buzzer only buzzes once
+                  # if dim = down, it will keep decreasing brightness with global var 'step' (so we can easily change this in a central place) as long as the button keeps being pressed until min_brightness would be exceed
+                  # in the case it will set it to min brightness, beep the buzzer once (the buzzer is defined as a light with effect "beeponce") and then stop the loop - this both prevent further needless loops as well as ensures the buzzer only buzzes once
+                  relative_brightness: !lambda |-
+                        float brightness;
+                        float gamma;
+                        id(led_cob).current_values_as_brightness(&brightness);
+                        // this is the gamma corrected value - we need to 'un'compensate for gamma to get a lineair %value
+                        gamma = id(led_cob).get_gamma_correct();
+                        brightness = powf(brightness,1/gamma);
+                        //id(led_cob).dump_config();
+                        ESP_LOGD("main", "while loop, dim=%d, brightness=%6.4lf, step=%6.4lf, max=%6.4lf, gamma=%6.4lf", id(led_cob_dim_direction), brightness,id(step),id(led_cob_max_brightness),gamma);
+                        if (brightness >= id(led_cob_max_brightness)) {
+                           // if we are at max already, no point in dimming up - this will ever happen at loop start because of the loopstop break, so no issues with the loop
+                           id(led_cob_dim_direction) = '0';
+                        }
+                        else if (brightness <= id(led_cob_min_brightness)) {
+                           // if we are at min already, no point in dimming down - this will ever happen at loop start because of the loopstop break, so no issues with the loop
+                           id(led_cob_dim_direction) = '1';
+                        }
+                        if (id(led_cob_dim_direction) == '1') {
+                           if ((id(step) + brightness) <= id(led_cob_max_brightness)) { 
+                              return(id(step));
+                           }
+                           else {
+                              auto call = id(green_buzzer_light).turn_on();
+                              call.set_effect("greenbeeponce");
+                              call.perform();
+                              id(led_cob_loop_stop) = true;
+                              return(id(led_cob_max_brightness)- brightness);
+                           }
+                        }
+                        else if (id(led_cob_dim_direction) != '1') {
+                           if ((brightness - id(step)) >= id(led_cob_min_brightness)) { 
+                            return(-id(step));
+                           }
+                           else {
+                              auto call = id(green_buzzer_light).turn_on();
+                              call.set_effect("greenbeeponce");
+                              call.perform();
+                              id(led_cob_loop_stop) = true;                          
+                             return(id(led_cob_min_brightness)- brightness);
+                           }  
+                        }
+                        // the else is strictly speaking not needed as the loop should break before this condition is true but if for whatever reason that would not happen at least we are returning something
+                        else {
+                          return(0);
+                        }
+                  transition_length: 0.05s
+            - delay: 0.04s
+      # now toggle the dim up/down direction so next time we do the opposite action
+      - globals.set:
+          id: led_cob_dim_direction
+          value: !lambda |-
+            if (id(led_cob_dim_direction) == '1') {
+                return('0');
+            } else {
+              return('1');
+            }
+ 

@@ -1,242 +1,150 @@
 substitutions:
   device_name: "luz-cozinha" #nome do MCU
   friendly_name: "Lampada" #nome amigavel do MCU
-  device_location: "Cozinha" # lugar onde está instalado
-  device_extras: "Sensor de presença LD2410B e Sonoff SV " # descriçao das funçoes extras do MCU
-  device_description: ${friendly_name} - ${device_location} - ${device_extras} # descriçao do MCU
-  # GPIO0 = Botão na Board - Para Flash e Comutar relé
-  # GPIO1 = TX - Ligado ao sensor de presença LD2840B
-  # GPIO3 = RX - Ligado ao sensor de presença LD2840B
-  # GPIO4 = I2C SDA
-  # GPIO5 = I2C SCL
-  # GPIO12 = Relé na Board
-  # GPIO13 = PIN na Board
-  # GPIO14 = Sensor de temperatura e humidade Sonoff Si7021
-  # Alimentação: GPIOs 3V3 ; Board 5V
+  device_info: "Luz da Cozinha"
+  device_location: "Cozinha" # lugar onde está instalado - HA
+  device_extras: "Sensor de presença LD2410B ESP32 D1 Mini - 2 lampadas Temperatura e humidade " # descriçao das funçoes extras do MCU
+  device_api_key: !secret api_key_luz-cozinha
+  device_ota_key: !secret ota_key_luz-cozinha
+  device_ip_addr: !secret ip_luz-cozinha
+  device_addr: "121"
 
-<<: !include include/dados.yaml
+###  ESPECIFICO PARA SENSOR DE PRESENÇA LD2410 UART
+  target_device_1: luz_da_cozinha_1 # id do dispositivo 1 a ser controlado Lampadas ou relés ou outro
+  target_device_2: luz_da_cozinha_2 # id do dispositivo 2 a ser controlado Lampadas ou relés ou outro
+  target_name: ${device_info}
+  tx_pin: GPIO17 # Pin TX  uart Esp8266 ou ESP32 UART0-> tx_pin: GPIO1 - UART2-> tx_pin: GPIO17 - Verde
+  rx_pin: GPIO16 # Pin RX  uart Esp8266 ou ESP32 UART0-> rx_pin: GPIO3 - UART2-> rx_pin: GPIO16 - Amarelo
+####
 
-esphome:
-  name: '${device_name}'
-  comment: '${device_description}'
-  build_path: ./projectos/${friendly_name} - ${device_location}
-##
-  includes:
-    - libraries/ld2410_uart.h
-  on_boot:
-    priority: 600
-    # ...
-    then:
-      - lambda: |-
-          auto uart_component = static_cast<LD2410 *>(ld2410);
-          uart_component->setNumbers(maxMovingDistanceRange, maxStillDistanceRange, noneDuration);
-##
-  platform: ESP8266
-  board: sonoff_sv
+packages:
+  <<: !include_dir_named common
+  ld2410 <<: !include devices/ld2410.yaml
+  board: !include boards/esp32-d1-mini.yaml
+#  i2c: !include components/i2c_esp32.yaml
 
-# Enable logging 
-# DEBUG or null - (Default) - Color: cyan; 
-# INFO - errors, warnings and info - Color: green;
-# VERBOSE - Like debug, but a few more messages - Color: grey
-# WARN - warnings and errors are logged - Color: yellow
-logger:
-  level: info
-  baud_rate: 0  # Desabilitar para ver os logs da UART0
-
-# Enable Home Assistant API
-api:
-  encryption:
-    key: !secret api_key_luz-cozinha    
-
-ota:
-  password: !secret ota_password_luz-cozinha
-
-wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
-  manual_ip:
-    static_ip: 192.168.1.121
-    gateway: 192.168.1.1
-    subnet: 255.255.255.0
-    dns1: !secret dns1_ip
-    dns2: !secret dns2_ip
-
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: "Luz cozinha Fallback Hotspot"
-    password: !secret wifi_ap_password
-
-
-captive_portal:
-
-uart:
-  id: uart1
-  tx_pin: TX
-  rx_pin: RX
-  baud_rate: 256000 # Alterar segundo as difiniçoes da porta COM
-  parity: NONE
-  stop_bits: 1
-  debug:
-    direction: BOTH
-    dummy_receiver: false
-    after:
-      delimiter: [0xF8,0xF7,0xF6,0xF5]
-      
-custom_component:
-  - lambda: |-
-      return {new LD2410(id(uart1))};
-    components:
-      - id: ld2410
-      
+# Detector de presença LD2410C usando UART
 binary_sensor:
-  - platform: custom
-    lambda: |-
-      auto uart_component = static_cast<LD2410 *>(ld2410);
-      return {uart_component->hasTarget,uart_component->hasMovingTarget,uart_component->hasStillTarget,uart_component->lastCommandSuccess};
-    binary_sensors:
-      - name: ${friendly_name} - ${device_location} Has Target
-      - name: ${friendly_name} - ${device_location} Has Moving Target
-      - name: ${friendly_name} - ${device_location} Has Still Target
-      - name: ${friendly_name} - ${device_location} Last Command Success
+  ##
+  - platform: ld2410
+    has_target:
+      name: "1 Presença ${target_name}"
+      id: alvo_detetado
+      device_class: occupancy
 
-# Botão interno do Sonoff-SV Relé SV
-  - platform: gpio
-    pin:
-      number: GPIO0
-      mode:
-        input: true
-        pullup: true
-      inverted: true
-    name: ${friendly_name} - ${device_location} Botao interno
-    on_press:
-      - switch.toggle: lampada_teto
+    has_moving_target:
+      name: "3 Alvo movimento ${target_name}"
+      id: alvo_movimento
+      device_class: moving
 
-# Relé do Sonoff-SV 5VDC - 250VAC 10A
+    has_still_target:
+      name: "2 Alvo fixo ${target_name}"
+      id: alvo_fixo
+      device_class: occupancy
+      on_press:
+        then:
+          - if:
+              condition:
+                and:
+                  - binary_sensor.is_on: alvo_fixo
+                  - binary_sensor.is_on: alvo_detetado
+                  #- light.is_off: "${target_2}"
+                  #- lambda: |-
+                  #    return id(energia_alvo_parado).state > 60;
+              then:
+                - light.turn_on: "${target_1}"
+
+      on_release:
+        then:
+          - if:
+              condition:
+                and:
+                  - binary_sensor.is_off: alvo_detetado
+                  - binary_sensor.is_off: alvo_fixo
+                  #- light.is_off: "${target_2}"
+                  #- lambda: |-
+                  #    return id(energia_alvo_parado).state < 20;
+              then:
+                - delay: 2s
+                - light.turn_off: "${target_1}"
+
+
+    out_pin_presence_status:
+      name: "Out Pin ${target_name}" # out pin presence status
+      id: out_pin_status
+      device_class: occupancy
+
+
 switch:
+# GPIO18 luz_da_cozinha_1 SSR1 Azul
   - platform: gpio
-    name: ${friendly_name} - ${device_location} Lampada(relé)
-    pin: GPIO12
-    id: lampada_teto
-## Configurações do LD2410B
+    restore_mode: RESTORE_DEFAULT_OFF
+    pin:
+      number:  GPIO18
+      allow_other_uses: true
+      inverted: True
+    name: ${device_info} 1 # SSR 1 Vermelho
+    internal: True
+    icon: mdi:globe-light
+    id: iluminacao_1
+    device_class: switch
+# GPIO19 - luz_da_cozinha_2 SSR2 Roxo
+  - platform: gpio
+    restore_mode: RESTORE_DEFAULT_OFF
+    pin:
+      number: GPIO19
+      allow_other_uses: True
+      inverted: True
+    name: ${device_info} 2 # SSR 2 Preto
+    internal: True
+    icon: mdi:globe-light
+    id: iluminacao_2
+    device_class: switch
+
+light:
+  - platform: binary
+    name: ${device_info} Auto
+    output: light_output_cozinha_1
+    restore_mode: ALWAYS_OFF
+    internal: False
+    id: luz_da_cozinha_1
+    icon: mdi:ceiling-light
+
+  - platform: binary
+    name: ${device_info} Manual
+    output: light_output_cozinha_2
+    restore_mode: ALWAYS_OFF
+    internal: False
+    id: luz_da_cozinha_2
+    icon: mdi:ceiling-light
+output:
+  - id: light_output_cozinha_1
+    platform: gpio
+    pin:
+      number: GPIO18
+      allow_other_uses: true
+      inverted: True
+  - id: light_output_cozinha_2
+    platform: gpio
+    pin:
+      number: GPIO19
+      allow_other_uses: true
+      inverted: True
+
+
+
 sensor:
-  - platform: custom
-    lambda: |-
-      auto uart_component = static_cast<LD2410 *>(ld2410);
-      return {uart_component->movingTargetDistance,uart_component->movingTargetEnergy,uart_component->stillTargetDistance,uart_component->stillTargetEnergy,uart_component->detectDistance};
-    sensors:
-      - name: "Moving Target Distance"
-        unit_of_measurement: "cm"
-        accuracy_decimals: 0
-      - name: "Moving Target Energy"
-        unit_of_measurement: "%"
-        accuracy_decimals: 0
-      - name: "Still Target Distance"
-        unit_of_measurement: "cm"
-        accuracy_decimals: 0
-      - name: "Still Target Energy"
-        unit_of_measurement: "%"
-        accuracy_decimals: 0
-      - name: "Detect Distance"
-        unit_of_measurement: "cm"
-        accuracy_decimals: 0
-#### DHT#####
   - platform: dht
-    pin: GPIO14  # Sensor de temperatura e humidade Sonoff Si7021
+    pin: GPIO23  # 3V3 - Sensor de temperatura e humidade Sonoff Si7021 Cinza
     temperature:
-      name: ${friendly_name} - ${device_location} Temperatura
+      name: ${device_info} Temperatura
+      filters:
+        - calibrate_linear:
+            - 4.0 -> 0.0
+            - 24.0 -> 20.0
+            - 29.0 -> 25.0
     humidity:
-      name: ${friendly_name} - ${device_location} Humidade"
+      name: ${device_info} Humidade
     update_interval: 60s
     model: Si7021
-# Diagnosticos
-  - platform: uptime # Reporta o tempo de actividade online
-    name: ${friendly_name} - ${device_location} Tempo Online
-    icon: mdi:timeline-clock
-    filters:
-      - lambda: return x / 3600.0;
-    unit_of_measurement: "horas"
-    accuracy_decimals: 2 
-
-  - platform: wifi_signal # Reporta a força do sinal WiFi em dB
-    name: ${friendly_name} - ${device_location} Sinal WiFi dB
-    id: wifi_signal_db
-    update_interval: 60s
-
-  - platform: copy # Reporta a força do sinal WiFi em %
-    source_id: wifi_signal_db
-    name: ${friendly_name} - ${device_location} Sinal WiFi %
-    filters:
-      - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
-    unit_of_measurement: " %"
-
-## rele sv Presence LD4210B
-number:        
-  - platform: template
-    name: "Max Moving Distance Range"
-    id: maxMovingDistanceRange
-    min_value: 1
-    max_value: 8
-    step: 1
-    update_interval: never
-    optimistic: true
-    set_action:
-      - lambda: |-
-          auto uart_component = static_cast<LD2410 *>(ld2410);
-          uart_component->setMaxDistancesAndNoneDuration(x,id(maxStillDistanceRange).state,id(noneDuration).state);
-  - platform: template
-    name: "Max Still Distance Range"
-    id: maxStillDistanceRange
-    min_value: 1
-    max_value: 8
-    step: 1
-    update_interval: never
-    optimistic: true
-    set_action:
-      - lambda: |-
-          auto uart_component = static_cast<LD2410 *>(ld2410);
-          uart_component->setMaxDistancesAndNoneDuration(id(maxMovingDistanceRange).state,x,id(noneDuration).state);
-  - platform: template
-    name: "None Duration"
-    id: noneDuration
-    min_value: 0
-    max_value: 32767
-    step: 1
-    mode: box
-    update_interval: never
-    optimistic: true
-    set_action:
-      - lambda: |-
-          auto uart_component = static_cast<LD2410 *>(ld2410);
-          uart_component->setMaxDistancesAndNoneDuration(id(maxMovingDistanceRange).state,id(maxStillDistanceRange).state,x);
-
-button:
-  - platform: template
-    name: "Reboot LD2410"
-    on_press:
-      lambda: 'static_cast<LD2410 *>(ld2410)->reboot();'
-  - platform: template
-    name: "Turn on config mode"
-    on_press:
-      - lambda: 'static_cast<LD2410 *>(ld2410)->setConfigMode(true);'
-  - platform: template
-    name: "Turn off config mode"
-    on_press:
-      - lambda: 'static_cast<LD2410 *>(ld2410)->setConfigMode(false);'
-  - platform: template
-    name: "Get config"
-    on_press:
-      - lambda: 'static_cast<LD2410 *>(ld2410)->queryParameters();'
-  - platform: template
-    name: "Set baud rate to 256000"
-    on_press:
-      - lambda: 'static_cast<LD2410 *>(ld2410)->setBaudrate(7);'
-  - platform: template
-    name: "Set baud rate to 115200"
-    on_press:
-      - lambda: 'static_cast<LD2410 *>(ld2410)->setBaudrate(5);'
-  - platform: template
-    name: "Set baud rate to 9600"
-    on_press:
-      - lambda: 'static_cast<LD2410 *>(ld2410)->setBaudrate(1);'
-
 

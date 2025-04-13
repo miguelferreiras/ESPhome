@@ -1,0 +1,467 @@
+substitutions:
+  device_name: "exaustor" #nome do MCU
+  name: "exaustor"
+  friendly_name: "Exaustor" #nome amigavel do MCU
+  device_info: "Exaustor da cozinha"
+  device_location: "Cozinha" # lugar onde está instalado
+  device_extras: "Exaustor 3 velocidades - ESP32 D1 Mini Pro" # descriçao das funçoes extras do MCU
+  device_api_key: !secret api_key_exaustor
+  device_ota_key: !secret ota_key_esp
+  device_ip_addr: !secret ip_exaustor
+  device_addr: "144"
+
+###  
+  tx_pin: GPIO16 # Pin TX  - UART2-> tx_pin: GPIO17 - Verde  INVERTIDO NO SENSOR LD2410B
+  rx_pin: GPIO17 # Pin RX  - UART2-> rx_pin: GPIO16 - Amarelo INVERTIDO NO SENSOR LD2410B
+#  i2c_sda: GPIO21 #
+#  i2c_scl: GPIO22 #
+
+packages:
+  <<: !include_dir_named common
+  board: !include boards/esp32_wrover_cam.yaml
+  i2c: !include components/i2c_esp32.yaml
+
+
+### SERVO
+esphome:
+  on_boot:
+    priority: -100
+    then:
+      - lambda: !lambda |-
+          id(servoSlider1).make_call().set_value(0).perform();
+
+
+logger:
+  logs:
+    number: none
+    servo: none
+### SERVO
+globals:
+  - id: sine_wave_phase
+    type: float
+    restore_value: no
+    initial_value: '0.0'
+
+  - id: sine_wave_range
+    type: float
+    restore_value: no
+    initial_value: '0.0'
+  
+  - id: sine_wave_speed
+    type: float
+    restore_value: no
+    initial_value: '1.0'
+
+### SERVO
+
+
+binary_sensor:
+  - platform: gpio
+    name: "Botao 1"
+    id: button1
+    internal: True
+    pin: 
+      number: 27
+      inverted: True
+      mode:
+        input: True
+        pullup: True
+    filters:
+      - delayed_on_off: 10ms
+
+  ## Option 1: Basic IF-THEN ##
+    # on_press:
+    #   then:
+    #     - if:
+    #         condition:
+    #           and:
+    #             - lambda: "return id(fanspeed).state == 1;"
+    #             - switch.is_on: master
+    #         then:
+    #           - switch.turn_off: master
+    #         else:
+    #           - number.set:
+    #               id: fanspeed
+    #               value: 1
+    #           - switch.turn_on: master
+    #     - switch.turn_off: randomSwitch
+
+  ## Option 2: Lambda ##
+    on_press:
+      then:
+        - lambda: |-
+            if ( id(fanspeed).state == 1 && id(master).state ) {
+              id(master).turn_off();
+            } else {
+              id(fanspeed).publish_state(1), id(master).turn_on(), id(randomSwitch).turn_off();
+            }
+
+    on_click:
+      min_length: 1s
+      max_length: 5s
+      then:
+        - switch.turn_on: randomSwitch
+
+  - platform: gpio
+    name: "Botao 2"
+    id: button2
+    internal: True
+    pin:
+      number: 14
+      inverted: True
+      mode:
+        input: True
+        pullup: True
+    filters:
+      - delayed_on_off: 10ms
+    on_press:
+      then:
+        - lambda: |-
+            if (id(fanspeed).state == 2 && id(master).state) {
+              id(master).turn_off();
+            } else {
+              id(fanspeed).publish_state(2), id(master).turn_on(), id(randomSwitch).turn_off();
+            }
+
+  - platform: gpio
+    name: "Botao 3"
+    id: button3
+    internal: True
+    pin:
+      number: 12
+      inverted: True
+      mode:
+        input: True
+        pullup: True
+    filters:
+      - delayed_on_off: 10ms
+    on_press:
+      then:
+        - lambda: |-
+            if (id(fanspeed).state == 3 && id(master).state) {
+              id(master).turn_off();
+            } else {
+              id(fanspeed).publish_state(3), id(master).turn_on(), id(randomSwitch).turn_off();
+            }
+
+number:
+  ## Slider for Home Assistant and Fan Speed Control ##
+  - platform: template
+    name: "Velocidade"
+    id: fanspeed
+    icon: mdi:speedometer
+    #icon: mdi:weather-windy
+    mode: slider
+    update_interval: never
+    optimistic: true
+    min_value: 1 #0
+    max_value: 3
+    initial_value: 3 #1
+    step: 1
+    ## Option 1: Basic If-Then ##
+    on_value:
+      - if:
+          condition:
+            - switch.is_on: master
+          then:
+            - lambda: >-
+                if (x == 1) {return id(relay1).turn_on();}
+                if (x == 2) {return id(relay2).turn_on();}
+                if (x == 3) {return id(relay3).turn_on();}
+
+    ## Option 2: All Lambda ##
+    # on_value:
+    #   - lambda: >-
+    #       if ( id(master).state ) {
+    #         if (x == 1) {return id(relay1).turn_on();}
+    #         if (x == 2) {return id(relay2).turn_on();}
+    #         if (x == 3) {return id(relay3).turn_on();}
+    #       }
+
+    ## Option 3: Switch & Case ##
+    # on_value:
+    #   - lambda: >-
+    #       if (id(master).state) {
+    #         switch ((int)x) {
+    #           case 1:
+    #             id(relay1).turn_on(); break;
+    #           case 2:
+    #             id(relay2).turn_on(); break;
+    #           case 3:
+    #             id(relay3).turn_on(); break;
+    #         }
+    #       }
+
+### SERVO
+#number:
+  - platform: template
+    id: servoSlider1
+    name: "Servo Rotação º"
+    icon: mdi:valve
+    #icon: mdi:rotate-360
+    optimistic: true
+    min_value: 0 #-100
+    max_value: 100 #100
+    initial_value: 100
+    step: 100 #5
+    on_value:
+      then:
+        - lambda: !lambda |-
+            // Servo Write range is: -1.0 to 1.0, so divide by 100
+            id(servo1).write(x / 100.0);
+
+  - platform: template
+    id: servoRange
+    name: "Servo limite º"
+    icon: mdi:pan-horizontal
+    min_value: 0
+    max_value: 100
+    initial_value: 0
+    step: 5
+    optimistic: True
+    on_value: 
+      then:
+        - lambda: !lambda |-
+            id(sine_wave_range) = x;
+
+  - platform: template
+    id: servoSpeed
+    name: "Servo velocidade"
+    icon: mdi:speedometer
+    min_value: 0
+    max_value: 100
+    initial_value: 5
+    step: 1
+    optimistic: True
+    on_value: 
+      then:
+        - lambda: !lambda |-
+            id(sine_wave_speed) = 5 + (100-x);
+
+### SERVO
+
+interval:
+  ## Random 'Party' Mode ##
+  - interval: 2s
+    then:
+      - lambda: |-
+          if (id(randomSwitch).state) {
+            int randomSpeed = 1 + round(random_float()*2);
+            id(fanspeed).publish_state(randomSpeed);
+          }
+### SERVO
+#interval:
+  - interval: 40ms
+    then:
+      if:
+        condition:
+          switch.is_on: sinEnable
+        then:
+          - lambda: |-
+              auto t = id(sine_wave_phase);
+              auto range = id(sine_wave_range);
+              auto speed = id(sine_wave_speed);
+
+              // Increment phase
+              t += (2 * PI) / speed;
+              if (t >= 2 * PI) t = 0; // Reset the phase after a full cycle
+
+              id(sine_wave_phase) = t;
+              int value = round(range * sin(t));
+
+              id(servoSlider1).publish_state(value);
+### SERVO
+
+#################  VALVULA
+valve:
+  - platform: template
+    name: "Valvula"
+    icon: mdi:valve
+    lambda: |-
+      if (id(master).state) {
+        return VALVE_OPEN;
+      } else {
+        return VALVE_CLOSED;
+      }
+#    open_action:
+#      - switch.turn_on: open_valve_switch
+#    close_action:
+#      - switch.turn_on: close_valve_switch
+#    stop_action:
+#      - switch.turn_on: stop_valve_switch
+    optimistic: true
+
+
+#################  VALVULA
+
+
+switch:
+  ## "Party" Mode (Random) Switch ##
+  - platform: template
+    id: randomSwitch
+    icon: mdi:auto-mode
+    name: "Ciclo Aleatório"
+    optimistic: True
+    on_turn_on: 
+      - switch.turn_on: master
+
+  ## "Master" Control Switch ##
+  - platform: template
+    id: master
+    name: "Interruptor"
+    icon: mdi:power
+    #icon: mdi:power
+    optimistic: true
+
+    ## Option 1: Basic Lambda ##
+    on_turn_on:
+      - lambda: >-
+          if (id(fanspeed).state == 1) {return id(relay1).turn_on();}
+          if (id(fanspeed).state == 2) {return id(relay2).turn_on();}
+          if (id(fanspeed).state == 3) {return id(relay3).turn_on();}
+# Abre a valvula
+      - servo.write:
+          id: servo1
+          level: 100.0%
+###################
+
+    ## Option 2: Lambda with Switch & Cases ##
+    # on_turn_on:
+    #   - lambda: >-
+    #       switch ( (int) id(fanspeed).state ) {
+    #         case 1:
+    #           id(relay1).turn_on(); break;
+    #         case 2:
+    #           id(relay2).turn_on(); break;
+    #         case 3:
+    #           id(relay3).turn_on(); break;
+    #       }
+
+    ## Turn of the "Master", turn off Everything! ##
+    on_turn_off:
+      then:
+        - lambda: |-
+            id(relay1).turn_off(), id(relay2).turn_off(), id(relay3).turn_off(), id(randomSwitch).turn_off();
+# Fecha a valvula
+        - servo.write:
+            id: servo1
+            level: 0.0%
+###################
+
+
+  ## On-Board Relays 
+  - platform: gpio
+    name: "Velocidade 1"
+    icon: mdi:tally-mark-1
+    id: relay1
+    restore_mode: ALWAYS_OFF
+    pin: 32
+    interlock: &interlock_group [relay1, relay2, relay3]
+    interlock_wait_time: 200ms
+
+  - platform: gpio
+    name: "Velocidade 2"
+    icon: mdi:tally-mark-2
+    id: relay2
+    pin: 33
+    interlock: *interlock_group
+    interlock_wait_time: 200ms
+
+  - platform: gpio
+    name: "Velocidade 3"
+    icon: mdi:tally-mark-3
+    id: relay3
+    pin: 25
+    interlock: *interlock_group
+    interlock_wait_time: 200ms
+
+  ## Luz do exaustor ##
+  - platform: gpio
+    name: "Iluminação"
+#    icon: mdi:electric-switch
+    id: relay4
+    internal: True
+#    pin: 26
+    pin:
+      number: 26 #GPIO14
+      allow_other_uses: true
+  ################################
+
+
+### SERVO
+#switch:
+  - platform: template
+    id: sinEnable
+    name: "Servo Sine"
+    icon: mdi:sine-wave
+    optimistic: true
+### SERVO
+
+
+## The Other On-Board LED. Not used, just for Reference. ##
+light:
+#  - platform: monochromatic
+#    name: $device_name LED
+#    id: led1
+#    output: led1Out
+
+#light:
+  - platform: binary
+    name: "Luz do exaustor"
+    output: light_output_exaustor
+    restore_mode: ALWAYS_OFF
+    id: luz_exautor
+    icon: mdi:wall-sconce-round-outline
+
+output:
+#  - platform: ledc
+#    id: led1Out
+#    pin: 23
+#output:
+  - id: light_output_exaustor
+    platform: gpio
+    pin:
+      number: 26 #GPIO14
+      allow_other_uses: true
+      inverted: true
+
+### SERVO
+#output:
+  - platform: ledc # For ESP8266 use: esp8266_pwm
+    id: output1
+    pin: 23
+    frequency: 50 Hz # MUST BE 50Hz
+### SERVO
+sensor:
+  - platform: aht10
+    temperature:
+      name: "Temperatura"
+      icon: mdi:thermometer
+      accuracy_decimals: 1
+      filters:
+        - calibrate_linear:
+            - 4.0 -> 0.0
+            - 24.0 -> 20.0
+            - 29.0 -> 25.0
+      id: exaustor_temperature
+    humidity:
+      name: "Humidade"
+      icon: mdi:water-percent
+      accuracy_decimals: 1
+      filters:
+      - filter_out: 0.0
+      - offset: -16.2
+      id: exaustor_humidity
+#    address: 0x44
+    update_interval: 10s
+
+#### SERVO
+servo:
+  - id: servo1
+    output: output1
+    auto_detach_time: 5s  # Optional - Default 0 (Always On)
+    transition_length: 0s # Optional - Default 0 (Max Speed)
+    min_level: 3.0%   # Optional - Default 3%  2.7
+    idle_level: 6.6%  # Optional - Default 7.5%
+    max_level: 11.3%  # Optional - Default 12.5%
+

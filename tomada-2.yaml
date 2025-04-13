@@ -1,0 +1,190 @@
+substitutions:
+  device_name: "tomada-2-shelly" #nome do MCU
+  friendly_name: "Tomada Shelly 136" #nome amigavel do MCU
+  device_info: "Shelly Plus IP136"
+  device_location: "Cozinha" # lugar onde está instalado
+  device_extras: "Tomada Shelly Plug S IP136" # descriçao das funçoes extras do MCU
+  device_api_key: !secret api_key_tomada_2_shelly
+  device_ota_key: !secret ota_key_tomada_2_shelly
+  device_ip_addr: !secret ip_tomada_2_shelly
+  device_addr: "136"
+  channel_1: ${friendly_name}
+  
+  # Higher value gives lower watt readout
+  current_res: "0.000943" # "0.004973"
+  # Lower value gives lower voltage readout
+  voltage_div: "1783.71"
+  # measure a relatively strong load and enter values measured by the device vs the values your reference measurement provided here
+  power_cal_meas: "2000.0" # 1710.0
+  power_cal_real: "1685.0"
+
+  max_current: "10"
+  max_power: "2400"
+  max_temp: "70.0"
+
+packages:
+  <<: !include_dir_named common
+  board: !include boards/esp8285.yaml
+
+esphome:
+  name: $device_name
+  on_boot:
+    - priority: 90
+      then:
+      # Make sure the relay is in a known state at startup
+      - switch.turn_off: relay
+      # Default to Power ON the switch relay
+      - delay: 20s
+      - switch.turn_on: relay
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO13
+      inverted: True
+    name: "${friendly_name} botao"
+    internal: True
+    on_press:
+      - switch.toggle: relay
+
+status_led:
+  pin:
+    number: GPIO02
+    inverted: True
+
+output:
+  - platform: gpio
+    pin: GPIO00
+    inverted: False #true
+    id: led
+
+switch:
+  - platform: gpio
+    pin: GPIO15
+    id: relay
+    device_class: OUTLET
+    name: "${channel_1}"
+    on_turn_on:
+      - output.turn_on: led
+    on_turn_off:
+      - output.turn_off: led
+
+sensor:
+  # NTC Temperature
+  - platform: ntc
+    sensor: temp_resistance_reading
+    name: ${channel_1} temperatura
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    icon: "mdi:thermometer"
+    calibration:
+      b_constant: 3350
+      reference_resistance: 10kOhm
+      reference_temperature: 298.15K
+    on_value_range:
+      - above: ${max_temp}
+        then:
+          - switch.turn_off: relay
+          - homeassistant.service:
+              service: persistent_notification.create
+              data:
+                title: AVISO de ${device_name}
+              data_template:
+                message: ${device_name} desligado por estar acima de ${max_temp}°C.
+
+  - platform: resistance
+    id: temp_resistance_reading
+    sensor: temp_analog_reading
+    configuration: DOWNSTREAM
+    resistor: 32kOhm
+  - platform: adc
+    id: temp_analog_reading
+    pin: A0
+
+  - platform: hlw8012
+    model: BL0937
+    sel_pin:
+      number: GPIO12
+      inverted: true
+    cf_pin: GPIO05
+    cf1_pin: GPIO14
+    change_mode_every: 3
+    update_interval: 3s
+    current_resistor: ${current_res}
+    voltage_divider: ${voltage_div}
+    current:
+      name: "${channel_1} - Amperes"
+      unit_of_measurement: "A"
+      accuracy_decimals: 3
+# https://frenck.dev/calibrating-an-esphome-flashed-power-plug/
+      filters:
+        # Map from sensor -> measured value
+        - calibrate_linear:
+            - 0.0 -> 0.013
+            - 0.08208 -> 0.071
+            - 1.34223 -> 1.066
+            - 5.57170 -> 4.408
+            - 6.69184 -> 5.259
+            - 6.97187 -> 5.540
+        # Make everything below 0.01A appear as just 0A.
+        # Furthermore it corrects 0.013A for the power usage of the plug.
+        - lambda: if (x < (0.49 - 0.013)) return 0; else return (x - 0.013);
+       # - lambda: if (x < (0.01 - 0.013)) return 0; else return (x - 0.013);
+##### 
+      icon: mdi:flash-outline
+      on_value_range:
+        - above: ${max_current}
+          then:
+            - switch.turn_off: relay
+            - homeassistant.service:
+                service: persistent_notification.create
+                data:
+                  title: Notificação de ${device_name}
+                data_template:
+                  message: ${device_name} desligado devido a ter excedido os ${max_current}A
+    voltage:
+      name: "${channel_1} - Volts"
+      unit_of_measurement: "V"
+      icon: mdi:flash-outline
+      accuracy_decimals: 0
+    power:
+      name: "${channel_1} - Watts"
+      id: power
+      unit_of_measurement: "W"
+# https://frenck.dev/calibrating-an-esphome-flashed-power-plug/
+      filters:
+        - calibrate_linear:
+          - 0.0 -> 0.0
+#          - ${power_cal_meas} -> ${power_cal_real}
+          - 62.06167 -> 10.93
+          - 1503.27161 -> 247.6
+          - 1599.81213 -> 263.7
+          - 3923.67700 -> 631.4
+          - 7109.50928 -> 1148.0
+          - 7237.0857 -> 1193.0
+          - 7426.71338 -> 1217.0
+        # Make everything below 2W appear as just 0W.
+        # Furthermore it corrects 1.14W for the power usage of the plug.
+        - lambda: if (x < (2 + 1.14)) return 0; else return (x - 1.14);
+####       
+      icon: mdi:flash-outline
+      on_value_range:
+        - above: ${max_power}
+          then:
+            - switch.turn_off: relay
+            - homeassistant.service:
+                service: persistent_notification.create
+                data:
+                  title: Notificação de ${device_name}
+                data_template:
+                  message: ${device_name} desligado devido a ter excedido os ${max_power}W
+#    update_interval: 10s
+
+  - platform: total_daily_energy
+    name: "${channel_1} energia diária"
+    power_id: power
+    filters:
+      # Multiplication factor from W to kW is 0.001
+      - multiply: 0.001
+    unit_of_measurement: kWh
+

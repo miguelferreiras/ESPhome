@@ -1,0 +1,56 @@
+substitutions:
+  device_name: "sensor-posicao-carro" #nome do MCU
+  friendly_name: "Posição do carro" #nome amigavel do MCU
+  device_info: "Posição do carro"
+  device_location: "Garagem" # lugar onde está instalado
+  device_extras: "ESP8266 D1 Mini - Sensor ultrasonico HC-SR04" # descriçao das funçoes extras do MCU
+  device_api_key: !secret api_key_posicao_carro
+  device_ota_key: !secret ota_key_esp
+  device_ip_addr: !secret ip_posicao_carro
+  device_addr: "118"
+
+packages:
+  <<: !include_dir_named common
+  board: !include boards/esp8266_d1_mini.yaml
+
+
+# API Key:  mm9RADUdOwCUt/VgoGw5S8v3FdY8OPx3171f1aedxyw=
+
+
+# Exposed switches.
+# Sensores medindo a distancia entre o tecto e o carro
+# e convertebdo para a altura do carro
+
+sensor:
+  - platform: ultrasonic
+    trigger_pin: D1
+    echo_pin: D2
+    name: "posicao_carro_traseira"
+    update_interval: 1s
+    filters:
+    - lambda: return 2.44 - x;
+
+  - platform: ultrasonic
+    trigger_pin: D3
+    echo_pin: D0
+    name: "posicao_carro_centrob"
+    update_interval: 1s
+    filters:
+    - lambda: return 2.44 - x;
+    
+  - platform: ultrasonic
+    trigger_pin: D5
+    echo_pin: D6
+    name: "posicao_carro_centrof"
+    update_interval: 1s
+    filters:
+    - lambda: return 2.44 - x;
+ 
+  - platform: ultrasonic
+    trigger_pin: D7
+    echo_pin: D8
+    name: "posicao_carro_frontal"
+    update_interval: 1s
+    filters:
+    - lambda: return 2.16 - x;
+    

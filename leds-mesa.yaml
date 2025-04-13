@@ -1,0 +1,110 @@
+substitutions:
+  device_name: "leds-mesa" #nome do MCU
+  friendly_name: "Leds mesa" #nome amigavel do MCU
+  device_info: "ESP32-C3"
+  device_location: "Escritorio" # lugar onde está instalado
+  device_extras: "ESP32-C3 LEDs RGB enderessaveis RGBWW" # descriçao das funçoes extras do MCU
+  device_api_key: !secret api_key_ledmesa
+  device_ota_key: !secret ota_key_ledmesa
+  device_ip_addr: !secret ip_ledmesa
+  device_addr: "129"
+
+packages:
+  <<: !include_dir_named common
+  board: !include boards/esp32-c3.yaml
+
+light:
+  - platform: rgbww
+    name: "LEDs da mesa"
+    red: output_r
+    green: output_g
+    blue: output_b
+    cold_white: output_c
+    warm_white: output_w
+    cold_white_color_temperature: 6536 K
+    warm_white_color_temperature: 2000 K
+    color_interlock: True
+    id: leds_mesa
+
+output:
+  - platform: ledc
+    id: output_r
+    pin: GPIO6
+    frequency: 100 Hz
+    max_power: 100%
+
+  - platform: ledc
+    id: output_g
+    pin: GPIO7
+    frequency: 100 Hz
+    max_power: 100%
+
+  - platform: ledc
+    id: output_b
+    pin: GPIO10
+    frequency: 100 Hz
+    max_power: 100%
+
+  - platform: ledc
+    id: output_w
+    pin: GPIO20
+    frequency: 100 Hz
+    max_power: 100%
+
+  - platform: ledc
+    id: output_c
+    pin: GPIO21
+    frequency: 100 Hz
+    max_power: 100%
+   
+switch:
+  - platform: template
+    name: ${friendly_name} Quente
+    id: led_mesa_quente
+    optimistic: true
+    turn_on_action:
+      - if:
+          condition:
+            light.is_off: leds_mesa
+          then:
+            - light.turn_on:
+                id: leds_mesa
+                cold_white: 0%
+                warm_white: 100%
+                brightness: 30%
+
+    turn_off_action:
+      - if:
+          condition:
+            light.is_on: leds_mesa
+          then:
+            - light.turn_on:
+                id: leds_mesa
+            - delay: 100ms  #1550ms
+            - light.turn_off: leds_mesa
+################
+  - platform: template
+    name: ${friendly_name} Frio
+    id: led_mesa_frio
+    optimistic: true
+    turn_on_action:
+      - if:
+          condition:
+            light.is_off: leds_mesa
+          then:
+            - light.turn_on:
+                id: leds_mesa
+                cold_white: 100%
+                warm_white: 0%
+                brightness: 30%
+
+    turn_off_action:
+      - if:
+          condition:
+            light.is_on: leds_mesa
+          then:
+            - light.turn_on:
+                id: leds_mesa
+            - delay: 100ms  #1550ms
+            - light.turn_off: leds_mesa
+

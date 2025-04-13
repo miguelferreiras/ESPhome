@@ -1,0 +1,17 @@
+substitutions:
+  name: home-assistant-voice-090c8b
+  friendly_name: Home Assistant Voice 090c8b
+packages:
+  Nabu Casa.Home Assistant Voice PE: github://esphome/home-assistant-voice-pe/home-assistant-voice.yaml
+esphome:
+  name: ${name}
+  name_add_mac_suffix: false
+  friendly_name: ${friendly_name}
+api:
+  encryption:
+    key: wEa4CKK96JCBlhI3KQD7PjIw6q+VHkYmfq7XPfoxGK4=
+
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password

@@ -1,0 +1,148 @@
+substitutions:
+  device_name: "wc-sv-armario" #nome do MCU
+  friendly_name: "Armario WC" #nome amigavel do MCU
+  device_info: "Sonoff SV"
+  device_location: "Casa de banho" # lugar onde está instalado
+  device_extras: "Luz do armario, botao tactil Sonoff SV " # descriçao das funçoes extras do MCU
+  device_api_key: !secret api_key_armario_wc
+  device_ota_key: !secret ota_key_armario_wc
+  device_ip_addr: !secret ip_armario_wc
+  device_addr: "114"
+
+  # GPIO0 = Botão na Board - Para Flash e Comutar relé
+  # GPIO1 = TX - 
+  # GPIO3 = RX - 
+  # GPIO4 = I2C SDA - Botao tactil - cinzento sinal - branco 3v3 - preto gnd
+  # GPIO5 = I2C SCL - sensor DHT11 - laranja sinal - vermelho 3v3 - castanho gnd
+  # GPIO12 = Relé na Board
+  # GPIO13 = PIN na Board
+  # GPIO14 = Livre - verde sinal - azul 3v3 - castanho/roxo gnd
+  # Alimentação: GPIOs 3V3 ; Board 5V
+#   API ANqcoDBEhdB7g6rNUvjBjB3TvXmibiS7XdU1K/y2kQQ=
+
+packages:
+  <<: !include_dir_named common
+  board: !include boards/esp8266_sonoff_sv.yaml
+
+esphome:
+  on_boot:
+    priority: -100 #600
+    then:
+      - switch.turn_off: lampada_armario_wc
+
+binary_sensor: # LD2410C GPIO5 Output
+#  - platform: gpio
+#    pin:
+#      number: GPIO14
+#      mode:
+#        input: True
+#        pullup: True
+#      inverted: False
+#    name: ${friendly_name} Presença
+#    on_press:
+#      then:
+#        - switch.turn_on: lampada_armario_wc
+#    on_release:
+#      then:
+#        - switch.turn_off: lampada_armario_wc
+
+# Botão interno do Sonoff-SV Relé SV
+  - platform: gpio
+    pin:
+      number: GPIO0
+      mode:
+        input: True
+        pullup: True
+      inverted: True
+    name: ${friendly_name} Botao interno
+    internal: True
+#    on_press:
+#      - switch.toggle: lampada_armario_wc
+#
+  - platform: gpio  #Interruptor de Iluminação tactil
+    pin:
+      number: GPIO4
+      mode:
+        input: True
+        pullup: False
+      inverted: False
+    name: ${friendly_name} Botao tactil
+    id: botao_tactil
+    icon: mdi:button-pointer
+    internal: True
+    filters:
+      - delayed_on: 50ms
+      - delayed_off: 50ms 
+#    on_press:
+#      then:
+#        - light.toggle: luz_armario_wc
+    on_multi_click:
+      # Um toque
+      - timing:
+        - ON for at most 1s
+        - OFF for at least 0.25s
+        then:
+          - light.toggle: luz_armario_wc
+      # Long Press
+      - timing:
+          - ON for at least 2s
+        then:
+          - homeassistant.service:
+              service: switch.toggle
+              data:
+                entity_id: switch.ventilacao_do_wc
+
+# Relé do Sonoff-SV 5VDC - 250VAC 10A
+switch:
+  - platform: gpio
+    pin:
+      number: GPIO12
+      allow_other_uses: true
+    name: Luz do ${friendly_name}
+    device_class: switch
+    internal: True
+    icon: mdi:wall-sconce-flat
+    id: lampada_armario_wc
+    restore_mode: ALWAYS_OFF #RESTORE_DEFAULT_OFF
+
+light:
+  - platform: binary
+    name: "Luz do armario"
+    output: light_output
+    restore_mode: ALWAYS_OFF
+    id: luz_armario_wc
+    icon: mdi:wall-sconce-flat
+
+output:
+  - id: light_output
+    platform: gpio
+    pin:
+      number: GPIO12
+      allow_other_uses: true
+
+sensor: 
+  - platform: dht
+    pin: GPIO5  # Sensor de temperatura e humidade Sonoff Si7021 / Pode ser utilizado para I2C - SCL
+    temperature:
+      name: Temperatura WC
+      filters:
+#      - filter_out: 0.0
+# Example filters:
+#      filters:
+#        - offset: 2.0
+#        - multiply: 1.2
+        - calibrate_linear:
+            - 4.0 -> 0.0
+            - 24.0 -> 20.0
+            - 29.0 -> 25.0
+    humidity:
+      name: Humidade WC
+#      on_value_range:
+#        - above: 80.0
+#          then:
+#            - switch.turn_on: lampada_armario_wc
+#        - below: 70.0
+#          then:
+#            - switch.turn_off: lampada_armario_wc
+    update_interval: 30s
+    model: DHT22

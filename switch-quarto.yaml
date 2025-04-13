@@ -1,0 +1,140 @@
+substitutions:
+  device_name: "switch-quarto" #nome do MCU
+  friendly_name: "Botões" #nome amigavel do MCU
+  device_info: "Botões do quarto"
+  device_location: "Quarto" # lugar onde está instalado
+  device_extras: "Botoneira Shelly 2 Switchs - ESP8266 D1 Mini Pro Fonte 3V3" # descriçao das funçoes extras do MCU
+  device_api_key: !secret api_key_switch-quarto
+  device_ota_key: !secret ota_key
+  device_ip_addr: !secret ip_switch-quarto
+  device_addr: "131"
+
+packages:
+  <<: !include_dir_named common
+  board: !include boards/esp8266_d1_mini.yaml
+
+  # switch-quarto
+  # 3V3 Vermelho - GND Preto 
+  # Interruptor -  Vermelho - comum GND
+  # D5 #GPIO14 - Azul
+  # D6 #GPIO12 - Preto
+
+    
+#  INTERRUPTOR INTERIOR
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: D5  #GPIO14  Azul
+      inverted: True
+      mode: INPUT_PULLUP
+    name: Botao Interior
+    id: interruptor_d5
+    icon: mdi:electric-switch
+    internal: False
+    filters:
+      - delayed_on: 10ms
+      - delayed_off: 10ms
+    on_multi_click:
+      # Um toque
+      - timing:
+        - ON for at most 1s
+        - OFF for at least 0.25s
+        then:
+          - homeassistant.service:
+              service: light.toggle
+              data:
+                entity_id: light.luz_da_sala 
+##### 2 toques
+      - timing:
+          - ON for at most 1s
+          - OFF for at most 0.25s
+          - ON for at most 1s
+          - OFF for at least 0.25s
+        then:
+          - homeassistant.service:
+              service: light.toggle
+              data:
+                entity_id: light.led_cob_light
+##### 3 toques
+      - timing:
+          - ON for at most 1s
+          - OFF for at most 0.25s
+          - ON for at most 1s
+          - OFF for at most 0.25s
+          - ON for at most 1s
+          - OFF for at least 0.25s
+        then:
+          - logger.log: "3 toques"
+#          - homeassistant.service:
+#              service: light.turn_off
+#              data:
+#                entity_id: light.todas_as_luzes
+
+      # Long Press
+      - timing:
+          - ON for at least 3s
+        then:
+          - homeassistant.service:
+              service: light.turn_off
+              data:
+                entity_id: light.todas_as_luzes
+
+############################################################
+
+#  INTERRUPTOR EXTERIOR
+
+  - platform: gpio
+    pin:
+      number: D6 #GPIO12 Preto
+      inverted: True
+      mode: INPUT_PULLUP
+    name: Botao Exterior
+    id: interruptor_d6
+    icon: mdi:electric-switch
+    internal: False
+    filters:
+      - delayed_on: 10ms
+      - delayed_off: 10ms
+    on_multi_click:
+      # Um toque
+      - timing:
+        - ON for at most 1s
+        - OFF for at least 0.25s
+        then:
+          - homeassistant.service:
+              service: light.toggle
+              data:
+                entity_id: light.leds_do_quarto 
+##### 2 toques
+      - timing:
+          - ON for at most 1s
+          - OFF for at most 0.25s
+          - ON for at most 1s
+          - OFF for at least 0.25s
+        then:
+          - homeassistant.service:
+              service: light.toggle
+              data:
+                entity_id: light.lampada_cob 
+##### 3 toques
+      - timing:
+          - ON for at most 1s
+          - OFF for at most 0.25s
+          - ON for at most 1s
+          - OFF for at most 0.25s
+          - ON for at most 1s
+          - OFF for at least 0.25s
+        then:
+          - homeassistant.service:
+              service: light.toggle
+              data:
+                entity_id: light.lampada_quente
+      # Long Press
+      - timing:
+          - ON for at least 3s
+        then:
+          - homeassistant.service:
+              service: light.turn_off
+              data:
+                entity_id: light.todas_as_luzes

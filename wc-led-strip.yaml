@@ -1,0 +1,342 @@
+substitutions:
+  device_name: "nedis-led-strip" #nome do MCU
+  friendly_name: "Led Strip" #nome amigavel do MCU
+  device_info: "NEDIS-led-strip"
+  device_location: "Hall" # lugar onde está instalado
+  device_extras: "NEDIS-led-strip - Controlo NEDIS RGBCW BK7231N" # descriçao das funçoes extras do MCU
+  device_api_key: !secret api_key_wc-led-strip
+  device_ota_key: !secret ota_key_wc-led-strip
+  device_ip_addr: !secret ip_wc-led-strip
+  device_addr: "124"
+
+packages:
+  <<: !include_dir_named common
+  board: !include boards/bk72xx-tuya.yaml
+
+mdns:
+debug:
+  update_interval: 5s
+
+
+logger:
+#  level: DEBUG
+#  level: info
+  baud_rate: 0
+#####
+# https://docs.libretiny.eu/docs/getting-started/gpio/
+#
+# https://www.elektroda.com/rtvforum/topic3951016.html
+#
+# https://developer.tuya.com/en/docs/iot/tuya-sandwich-wifi-and-ble-soc-board-BK7231N?id=Kao72e6net3bs#title-2-I%2FO%20port%20and%20pin%20description
+#
+# GPIOP_10 on BK7231N, which can be reused as the UART1 RXD pin and generally used as the user I/O.
+# GPIOP_11 on BK7231N, which can be reused as the UART1 TXD pin and generally used as the user I/O.
+
+#	P01	GPIOP_01 on BK7231N, which can be reused as the UART2 RXD pin, generally used for log printing.
+#	P00	GPIOP_00 on BK7231N, which can be reused as the UART2 TXD pin, generally used for log printing.
+
+#	P14	GPIOP_14 on BK7231N, which can be reused as the SPI SCK.
+#	P16	GPIOP_16 on BK7231N, which can be reused as the SPI MOSI.
+#	P15	GPIOP_15 on BK7231N, which can be reused as the SPI CSN.
+#	P17	GPIOP_17 on BK7231N, which can be reused as the SPI MISO.
+
+#	P20	GPIOP_20 on BK7231N, which can be reused as the I2C1 SCL.
+# P21	GPIOP_21 on BK7231N, which can be reused as the I2C1 SDA.
+
+#	P06	GPIOP_06 on BK7231N, which can be reused as the PWM0.
+#	P07	GPIOP_07 on BK7231N, which can be reused as the PWM1.
+#	P08	GPIOP_08 on BK7231N, which can be reused as the PWM2.
+#	P09	GPIOP_09 on BK7231N, which can be reused as the PWM3.
+# P24	GPIOP_24 on BK7231N, which can be reused as the PWM4.
+# P26	GPIOP_26 on BK7231N, which can be reused as the PWM5.
+
+# P22	GPIOP_22 on BK7231N.
+# P23	GPIOP_23 on BK7231N, which can be reused as the ADC.
+# P28	GPIOP_28 on BK7231N.
+#
+#
+## GPIOS
+#	P01	GPIOP_01 UART2 RXD  - Fio Azul
+#	P09	GPIOP_09 PWM3  - Botao - fio amarelo
+# P10 GPIOP_10  UART1 RXD - fio roxo
+# P11 GPIOP_11  UART1 TXD  - Fio Laranja
+#	P15	GPIOP_15 SPI CSN. fio verde
+
+## LIGHTS
+#	P08	GPIOP_08 PWM2. output_red
+# P24	GPIOP_24 PWM4. output_green
+#	P06	GPIOP_06  PWM0. output_blue
+#	P07	GPIOP_07 PWM1. output_cold
+# P26	GPIOP_26 PWM5. output_warm
+#####
+uart:
+  id: ld2410_uart
+  tx_pin: P11
+  rx_pin: P10
+  baud_rate: 256000
+  parity: NONE
+  stop_bits: 1
+
+ld2410:
+  uart_id: ld2410_uart
+  throttle: 1500ms
+  id: ld2410_comp
+#####
+binary_sensor:
+  - platform: ld2410
+    has_target:
+      name: Radar Target
+      id: radar_has_target
+    has_moving_target:
+      name: Radar Moving Target
+    has_still_target:
+      name: Radar Still Target
+
+  - platform: gpio
+    pin:
+      number: P01 #	P01	GPIOP_01,  UART2 RXD pin, fio azul
+    name: out presence
+    device_class: motion
+
+#####
+# binary_sensor:
+  - platform: gpio
+    id: binary_onoff_p9
+    name: ${friendly_name} - RED -  amarelo
+    pin:
+      number: P9 #P9 # PWM3 - Amarelo - Botão 
+      inverted: false #true
+      mode: INPUT_PULLUP
+
+    on_click:
+    - min_length: 50ms
+      max_length: 350ms
+      then:
+        - light.turn_on: light_rgbww
+    - min_length: 500ms
+      max_length: 1000ms
+      then:
+        - light.turn_off: light_rgbww
+
+
+
+sensor:
+  - platform: ld2410
+    light:
+      name: light
+    moving_distance:
+      name : Moving Distance
+    still_distance:
+      name: Still Distance
+    moving_energy:
+      name: Move Energy
+    still_energy:
+      name: Still Energy
+    detection_distance:
+      name: Detection Distance
+    g0:
+      move_energy:
+        name: g0 move energy
+      still_energy:
+        name: g0 still energy
+    g1:
+      move_energy:
+        name: g1 move energy
+      still_energy:
+        name: g1 still energy
+    g2:
+      move_energy:
+        name: g2 move energy
+      still_energy:
+        name: g2 still energy
+    g3:
+      move_energy:
+        name: g3 move energy
+      still_energy:
+        name: g3 still energy
+    g4:
+      move_energy:
+        name: g4 move energy
+      still_energy:
+        name: g4 still energy
+    g5:
+      move_energy:
+        name: g5 move energy
+      still_energy:
+        name: g5 still energy
+    g6:
+      move_energy:
+        name: g6 move energy
+      still_energy:
+        name: g6 still energy
+    g7:
+      move_energy:
+        name: g7 move energy
+      still_energy:
+        name: g7 still energy
+    g8:
+      move_energy:
+        name: g8 move energy
+      still_energy:
+        name: g8 still energy
+
+
+  - platform: dht
+    pin: P15
+    temperature:
+      name: "Living Room Temperature"
+    humidity:
+      name: "Living Room Humidity"
+    update_interval: 30s
+
+number:
+  - platform: ld2410
+    timeout:
+      name: timeout
+    light_threshold:
+      name: light threshold
+    max_move_distance_gate:
+      name: max move distance gate
+    max_still_distance_gate:
+      name: max still distance gate
+    g0:
+      move_threshold:
+        name: g0 move threshold
+      still_threshold:
+        name: g0 still threshold
+    g1:
+      move_threshold:
+        name: g1 move threshold
+      still_threshold:
+        name: g1 still threshold
+    g2:
+      move_threshold:
+        name: g2 move threshold
+      still_threshold:
+        name: g2 still threshold
+    g3:
+      move_threshold:
+        name: g3 move threshold
+      still_threshold:
+        name: g3 still threshold
+    g4:
+      move_threshold:
+        name: g4 move threshold
+      still_threshold:
+        name: g4 still threshold
+    g5:
+      move_threshold:
+        name: g5 move threshold
+      still_threshold:
+        name: g5 still threshold
+    g6:
+      move_threshold:
+        name: g6 move threshold
+      still_threshold:
+        name: g6 still threshold
+    g7:
+      move_threshold:
+        name: g7 move threshold
+      still_threshold:
+        name: g7 still threshold
+    g8:
+      move_threshold:
+        name: g8 move threshold
+      still_threshold:
+        name: g8 still threshold
+
+
+switch:
+  - platform: ld2410
+    engineering_mode:
+      name: "engineering mode"
+    bluetooth:
+      name: "control bluetooth"
+
+button:
+  - platform: ld2410
+    factory_reset:
+      name: "factory reset"
+    restart:
+      name: "restart ndis"
+    query_params:
+      name: "query params"
+
+.text_sensor:
+  - platform: ld2410
+    version:
+      name: "firmware version"
+    mac_address:
+      name: "mac address"
+
+select:
+  - platform: ld2410
+    distance_resolution:
+      name: "distance resolution"
+    baud_rate:
+      name: "baud rate"
+    light_function:
+      name: light function
+    out_pin_level:
+      name: out pin level
+
+
+#####
+output:
+  - platform: libretiny_pwm
+    id: output_red
+    pin: P8 # PWM2
+  - platform: libretiny_pwm
+    id: output_green
+    pin: P24 # PWM4 - PWMG
+  - platform: libretiny_pwm
+    id: output_blue
+    pin: P6 # PWM0
+  - platform: libretiny_pwm
+    id: output_cold
+    pin: P7 # PWM1
+  - platform: libretiny_pwm
+    id: output_warm
+    pin: P26 # PWM5 - PWMW
+
+
+light:
+  - platform: rgbww
+    id: light_rgbww
+    name: ${friendly_name} - ${device_location}
+    color_interlock: true
+    cold_white_color_temperature: 6500 K
+    warm_white_color_temperature: 2700 K
+    red: output_red
+    green: output_green
+    blue: output_blue
+    cold_white: output_cold
+    warm_white: output_warm
+    effects:
+      - lambda:
+          name: My Custom Effect
+          update_interval: 1s
+          lambda: |-
+            static int state = 0;
+            auto call = id(light_rgbww).turn_on();
+            // Transition of 1000ms = 1s
+            call.set_transition_length(1000);
+            if (state == 0) {
+              call.set_rgb(1.0, 1.0, 1.0);
+            } else if (state == 1) {
+              call.set_rgb(1.0, 0.0, 1.0);
+            } else if (state == 2) {
+              call.set_rgb(0.0, 0.0, 1.0);
+            } else {
+              call.set_rgb(1.0, 0.0, 0.0);
+            }
+            call.perform();
+            state += 1;
+            if (state == 4)
+              state = 0;
+
+      - random:
+      - random:
+          name: Random Effect With Custom Values
+          transition_length: 3s
+          update_interval: 5s

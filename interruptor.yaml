@@ -1,0 +1,272 @@
+substitutions:
+  device_name: "interruptor" #nome do MCU
+  friendly_name: "Interruptor" #nome amigavel do MCU
+  device_info: "ESP8266"
+  device_location: "Sala de estar" # lugar onde está instalado
+  device_extras: "Entrada, Cozinha, Corredor, WC-Iluminaçao" # descriçao das funçoes extras do MCU
+  device_api_key: !secret api_key_interruptor
+  device_ota_key: !secret ota_key_interruptor
+  device_ip_addr: !secret ip_interruptor
+  device_addr: "126"
+
+packages:
+  <<: !include_dir_named common
+  board: !include boards/esp8266_d1_mini.yaml
+
+######################
+binary_sensor:
+  - platform: gpio  #Interruptor da Sala 1 entrada GPIO14
+    pin:
+      number: D5
+      mode: INPUT_PULLUP
+    name: Botao sala 1
+    id: interruptorsalaentrada
+    icon: mdi:electric-switch
+    internal: False
+    filters:
+      - delayed_on: 10ms
+      - delayed_off: 10ms
+    on_multi_click:
+      # Um toque
+      - timing:
+        - ON for at most 1s
+        - OFF for at least 0.25s
+        then:
+          - homeassistant.service:
+              service: light.toggle
+              data:
+                entity_id: light.luz_da_sala
+##### 2 toques
+      - timing:
+          - ON for at most 1s
+          - OFF for at most 0.25s
+          - ON for at most 1s
+          - OFF for at least 0.25s
+
+        then:
+#          if:
+#            condition:
+              # Same syntax for is_off
+#              light.is_on: light.led_cob_light
+#            then:
+          - homeassistant.service:
+              service: light.turn_on
+              data:
+                entity_id: light.led_cob_light
+                brightness: 100%
+##### 3 toques
+      - timing:
+          - ON for at most 1s
+          - OFF for at most 0.25s
+          - ON for at most 1s
+          - OFF for at most 0.25s
+          - ON for at most 1s
+          - OFF for at least 0.25s
+        then:
+          - homeassistant.service:
+              service: light.turn_on
+              data:
+                entity_id: light.led_cob_light
+                brightness: 20%
+      # Long Press
+      - timing:
+          - ON for at least 3s
+        then:
+          - homeassistant.service:
+              service: light.turn_off
+              data:
+                entity_id: light.todas_as_luzes
+
+
+
+
+##################################################
+  - platform: gpio ##Interruptor da Sala 2 Corredor - GPIO12
+    pin:
+      number: D6
+      mode: INPUT_PULLUP
+    name: Botao sala 2
+    id: interruptorsalacorredor
+    icon: mdi:electric-switch
+    internal: False
+    filters:
+      - delayed_on: 10ms
+      - delayed_off: 10ms
+    on_multi_click:
+      # Um toque
+      - timing:
+        - ON for at most 1s
+        - OFF for at least 0.25s
+        then:
+          - homeassistant.service:
+              service: light.toggle
+              data:
+                entity_id: light.luz_da_sala
+##### 2 toques
+      - timing:
+          - ON for at most 1s
+          - OFF for at most 0.25s
+          - ON for at most 1s
+          - OFF for at least 0.25s
+
+        then:
+          - homeassistant.service:
+              service: light.toggle
+              data:
+                entity_id: light.lampada_do_quarto
+##### 3 toques
+      - timing:
+          - ON for at most 1s
+          - OFF for at most 0.25s
+          - ON for at most 1s
+          - OFF for at most 0.25s
+          - ON for at most 1s
+          - OFF for at least 0.25s
+        then:
+          - homeassistant.service:
+              service: light.toggle
+              data:
+                entity_id: light.leds_do_quarto
+      # Long Press
+      - timing:
+          - ON for at least 3s
+        then:
+          - homeassistant.service:
+              service: light.turn_off
+              data:
+                entity_id: light.todas_as_luzes
+
+#    on_state:
+#      then:
+#        - homeassistant.service:
+#            service: light.toggle
+#            data:
+#              entity_id: light.luz_da_sala
+
+######################################
+  - platform: gpio #Interruptor do WC Corredor - GPIO13
+    pin:
+      number: D7
+      mode: INPUT_PULLUP
+    name: Botão Armario WC
+    id: interruptorwccorredor
+    icon: mdi:electric-switch
+    internal: False
+    filters:
+      - delayed_on: 10ms
+      - delayed_off: 10ms
+    on_multi_click:
+      # Um toque
+      - timing:
+        - ON for at most 1s
+        - OFF for at least 0.25s
+        then:
+          - homeassistant.service:
+              service: light.toggle
+              data:
+                entity_id: light.luz_do_armario
+##### 2 toques
+      - timing:
+          - ON for at most 1s
+          - OFF for at most 0.25s
+          - ON for at most 1s
+          - OFF for at least 0.25s
+
+        then:
+          - homeassistant.service:
+              service: switch.toggle
+              data:
+                entity_id: switch.ventilacao_do_wc
+##### 3 toques
+      - timing:
+          - ON for at most 1s
+          - OFF for at most 0.25s
+          - ON for at most 1s
+          - OFF for at most 0.25s
+          - ON for at most 1s
+          - OFF for at least 0.25s
+        then:
+          - homeassistant.service:
+              service: light.toggle
+              data:
+                entity_id: light.leds_do_quarto
+      # Long Press
+      - timing:
+          - ON for at least 3s
+        then:
+          - homeassistant.service:
+              service: light.turn_off
+              data:
+                entity_id: light.todas_as_luzes
+
+#    on_state:
+#      then:
+#        - homeassistant.service:
+#            service: light.toggle
+#            data:
+#              entity_id: light.luz_do_armario
+
+##############
+  - platform: gpio #Interruptor da Cozinha - GPIO3 RX - HIGH at boot
+    pin:
+      number: GPIO3
+    name: Botao cozinha
+    id: interruptornacozinha
+    icon: mdi:electric-switch
+    internal: False
+    filters:
+      - delayed_on: 10ms
+      - delayed_off: 10ms
+    on_multi_click:
+      # Um toque
+      - timing:
+        - ON for at most 1s
+        - OFF for at least 0.25s
+        then:
+          - homeassistant.service:
+              service: light.toggle
+              data:
+                entity_id: light.luz_da_cozinha_manual_2
+##### 2 toques
+      - timing:
+          - ON for at most 1s
+          - OFF for at most 0.25s
+          - ON for at most 1s
+          - OFF for at least 0.25s
+
+        then:
+          - homeassistant.service:
+              service: light.toggle
+              data:
+                entity_id: light.lampada_do_quarto
+##### 3 toques
+      - timing:
+          - ON for at most 1s
+          - OFF for at most 0.25s
+          - ON for at most 1s
+          - OFF for at most 0.25s
+          - ON for at most 1s
+          - OFF for at least 0.25s
+        then:
+          - homeassistant.service:
+              service: light.toggle
+              data:
+                entity_id: light.leds_do_quarto
+      # Long Press
+      - timing:
+          - ON for at least 3s
+        then:
+          - homeassistant.service:
+              service: light.turn_off
+              data:
+                entity_id: light.todas_as_luzes
+
+#    on_state:
+#      then:
+#        - homeassistant.service:
+#            service: light.toggle
+#            data:
+#             entity_id: light.luz_da_cozinha_manual_2
+
+
+############################# GPIO4 SDA (I2C) GPIO5 SCL (I2C)

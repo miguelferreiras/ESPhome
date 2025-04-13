@@ -1,0 +1,167 @@
+substitutions:
+  device_name: "ventoinha-da-sala" #nome do MCU
+  friendly_name: "Ventoinha" #nome amigavel do MCU
+  device_info: "Ventoinha da Sala"
+  device_location: "Sala de estar" # lugar onde está instalado
+  device_extras: "com 3 velocidades" # descriçao das funçoes extras do MCU
+  device_api_key: !secret api_key_ventoinha-da-sala
+  device_ota_key: !secret ota_key_ventoinha-da-sala
+  device_ip_addr: !secret ip_ventoinha-da-sala
+  device_addr: "110"
+
+packages:
+  <<: !include_dir_named common
+  board: !include boards/esp8266_d1_mini.yaml
+
+binary_sensor:
+  - platform: gpio # Configuraçao do botao fisico
+    id: push_button
+    name: "${friendly_name} - Botão"
+    pin:
+      number: D2
+      mode: INPUT_PULLUP
+    internal: True
+    on_multi_click:
+      - timing:
+        - ON for 1s to 3s
+        - OFF for at least 0.2s
+        then:
+          - logger.log: "Desligar"
+          - switch.turn_off: velocidade1
+          - switch.turn_off: velocidade2
+          - switch.turn_off: velocidade3
+
+      - timing:
+        - ON for at most 1s
+        - OFF for at least 0.2s
+        then:
+        - if:
+            condition:
+              and:
+                - lambda: "return id(speed).state == 1;"
+                - switch.is_on: velocidade1
+            then:
+              - switch.turn_off: velocidade1
+            else:
+              - number.set:
+                  id: speed
+                  value: 1
+              - switch.turn_on: velocidade1
+
+      - timing:
+        - ON for at most 1s
+        - OFF for at most 1s
+        - ON for at most 1s
+        - OFF for at least 0.2s
+        then:
+        - if:
+            condition:
+              and:
+                - lambda: "return id(speed).state == 2;"
+                - switch.is_on: velocidade2
+            then:
+              - switch.turn_off: velocidade2
+            else:
+              - number.set:
+                  id: speed
+                  value: 2
+              - switch.turn_on: velocidade2
+
+      - timing:
+        - ON for at most 1s
+        - OFF for at most 1s
+        - ON for at most 1s
+        - OFF for at most 1s
+        - ON for at most 1s
+        - OFF for at least 0.2s
+        then:
+        - if:
+            condition:
+              and:
+                - lambda: "return id(speed).state == 3;"
+                - switch.is_on: velocidade3
+            then:
+              - switch.turn_off: velocidade3
+            else:
+              - number.set:
+                  id: speed
+                  value: 3
+              - switch.turn_on: velocidade3
+
+number:
+  - platform: template
+    name: "Velocidade da ${friendly_name}"
+    id: speed
+    icon: mdi:fan
+    update_interval: 50ms
+    optimistic: true
+    min_value: 1
+    max_value: 3
+    initial_value: 1
+    step: 1
+    set_action:
+      - if:
+          condition:
+            - switch.is_on: velocidade1
+          then:
+            - lambda: >-
+                if (x == 1) {return id(velocidade1).turn_on();}
+            - lambda: >-
+                if (x == 2) {return id(velocidade2).turn_on();}
+            - lambda: >-
+                if (x == 3) {return id(velocidade3).turn_on();}
+
+switch:
+  - platform: gpio
+    name: ${friendly_name} Mínima
+    pin: 
+      number: D5
+    inverted: True
+    icon: mdi:fan-speed-1
+    id: velocidade1
+    restore_mode: RESTORE_DEFAULT_OFF
+    interlock: &interlock_group [velocidade1, velocidade2, velocidade3]
+    interlock_wait_time: 300ms
+            
+  - platform: gpio
+    name: ${friendly_name} Média
+    pin: 
+      number: D6
+    inverted: True
+    icon: mdi:fan-speed-2
+    id: velocidade2
+    restore_mode: RESTORE_DEFAULT_OFF
+    interlock: *interlock_group
+    interlock_wait_time: 300ms
+            
+  - platform: gpio
+    name: ${friendly_name} Máxima
+    pin: 
+      number: D7
+    inverted: True
+    icon: mdi:fan-speed-3
+    id: velocidade3
+    restore_mode: RESTORE_DEFAULT_OFF
+    interlock: *interlock_group
+    interlock_wait_time: 300ms
+
+
+  - platform: template
+    id: velocidade
+    icon: mdi:fan
+    name: ${device_info}
+    optimistic: true
+    on_turn_on:
+      then:
+        - lambda: >-
+            if (id(speed).state == 1) {return id(velocidade1).turn_on();}
+        - lambda: >-
+            if (id(speed).state == 2) {return id(velocidade2).turn_on();}
+        - lambda: >-
+            if (id(speed).state == 3) {return id(velocidade3).turn_on();}
+    on_turn_off:
+      - lambda: "id(velocidade1).turn_off();"
+      - lambda: "id(velocidade2).turn_off();"
+      - lambda: "id(velocidade3).turn_off();"
+
+    

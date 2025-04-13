@@ -1,0 +1,89 @@
+substitutions:
+  device_name: "rgb-lamp-cb2l" #nome do MCU
+  friendly_name: "Lampada RGB" #nome amigavel do MCU
+  device_info: "RGB BULB CB2L BK 7231N"
+  device_location: "Hall" # lugar onde está instalado
+  device_extras: "Globo RGB BULB CB2L RGBCW BK7231N" # descriçao das funçoes extras do MCU
+  device_api_key: !secret api_key_rgb-cb2l
+  device_ota_key: !secret ota_key_rgb-cb2l
+  device_ip_addr: !secret ip_rgb-cb2l
+  device_addr: "128"
+
+packages:
+  <<: !include_dir_named common
+  board: !include boards/bk72xx-cb2l-tuya.yaml
+
+mdns:
+
+debug:
+  update_interval: 30s
+
+
+# Enable Home Assistant API
+#api:
+#  encryption:
+#    key: "3jGaJVE4sM7GTwDZQJMHzjLdU9OyWjF5i/REH68nTgY="
+
+#ota:
+#  password: "82a99efc5cf65392a4d2d8c7c90b90c3"
+
+#wifi:
+#  ssid: !secret wifi_ssid
+#  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+#  ap:
+#    ssid: "Rgb-Lamp-Cb2L Fallback Hotspot"
+#    password: "TL5msgNDxjIO"
+
+
+text_sensor:
+  - platform: debug
+    reset_reason:
+      name: Reset Reason
+  - platform: libretiny
+    version:
+      name: LibreTiny Version
+
+sensor:
+  - platform: uptime
+    name: Uptime
+
+sm2135:
+  clock_pin: P8
+  data_pin: P26
+  rgb_current: 20mA
+  cw_current: 50mA
+
+output:
+  - platform: sm2135
+    id: output_red
+    channel: 2
+  - platform: sm2135
+    id: output_green
+    channel: 1
+  - platform: sm2135
+    id: output_blue
+    channel: 0
+  - platform: sm2135
+    id: output_cold
+    channel: 4
+  - platform: sm2135
+    id: output_warm
+    channel: 3
+
+light:
+  - platform: rgbww
+    id: light_rgbww
+    name: Light
+    color_interlock: true
+    cold_white_color_temperature: 6500 K
+    warm_white_color_temperature: 2700 K
+    red: output_red
+    green: output_green
+    blue: output_blue
+    cold_white: output_cold
+    warm_white: output_warm
+
+captive_portal:
+    

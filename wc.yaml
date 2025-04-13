@@ -1,0 +1,95 @@
+substitutions:
+  device_name: "luz-vent-wc"
+  friendly_name: "Luz do WC "
+  device_info: "WC"
+  device_location: "Casa de Banho" 
+  device_extras: "Iluminaçao, ventilaçao (SSR), presença (LD2410C), temperatura e humidade - AHT20" 
+  device_api_key: !secret api_key_wc
+  device_ota_key: !secret ota_key_wc
+  device_ip_addr: !secret ip_wc
+  device_addr: "123"
+
+packages:
+  <<: !include_dir_named common
+  board: !include boards/esp8266_d1_mini.yaml
+  i2c: !include components/i2c_esp8266.yaml
+
+  # 5v Vermelho - 3V3 Cinza - GND Preto e Castanho
+  # Placa de SSR - 5v Vermelho - GND Cinza 
+  # D5 #GPIO14 SSR1 Amarelo/Laranja - D6 #GPIO12 SSR2 Verde/Azul
+  # I2C - sda: GPIO4 #D2 verde / scl: GPIO5 #D1 amarelo
+  # Detector de presença IO LD24010 - GPIO13 Roxo 
+
+#wifi:
+#  use_address: 192.168.1.123
+
+
+switch:
+# Iluminaçao no tecto do WC - SSR1 Laranja
+  - platform: gpio
+    pin:
+      number: D5 #GPIO14 
+      allow_other_uses: true
+      inverted: true
+    name: ${friendly_name} # SSR 1
+    icon: mdi:globe-light
+    id: iluminacao_wc
+    device_class: switch
+# Ventilhaçao no WC - SSR2 - Azul
+  - platform: gpio
+    pin:
+      number: D6 #GPIO12 
+      inverted: true
+    name: Ventilação do ${device_info} # SSR 2
+    icon: mdi:fan
+    id: ventilador_wc
+    device_class: switch
+
+light:
+  - platform: binary
+    name: "Luz do WC"
+    output: light_output_wc
+    restore_mode: ALWAYS_OFF
+    id: luz_tecto_wc
+output:
+  - id: light_output_wc
+    platform: gpio
+    pin:
+      number: D5 #GPIO14
+      allow_other_uses: true
+      inverted: true
+
+### # Detector de presença LD2410C usando Binary-output
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: D7
+      inverted: False
+    name: ${device_info} Presença
+    device_class: occupancy
+    on_press:
+      then:
+        - light.toggle: luz_tecto_wc
+    on_release:
+      then:
+        - light.toggle: luz_tecto_wc
+
+
+sensor:
+  - platform: aht10
+    temperature:
+      name: "Temperatura do WC"
+      accuracy_decimals: 1
+      filters:
+        - calibrate_linear:
+            - 4.0 -> 0.0
+            - 24.0 -> 20.0
+            - 29.0 -> 25.0
+      id: air_temperature
+    humidity:
+      name: "Humidade do WC"
+      accuracy_decimals: 1
+      filters:
+      - filter_out: 0.0
+      id: relative_humidity
+    update_interval: 10s

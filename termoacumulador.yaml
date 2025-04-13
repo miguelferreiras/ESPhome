@@ -1,23 +1,34 @@
 substitutions:
   device_name: "termoacumulador" #nome do MCU
   friendly_name: "Termoacumulador" #nome amigavel do MCU
+  device_info: "Boiler"
   device_location: "Cozinha" # lugar onde está instalado
   device_extras: "Controlo de temperatura" # descriçao das funçoes extras do MCU
-  device_description: ${friendly_name} - ${device_location} - ${device_extras} # descriçao do MCU
-  update_interval_wifi: "120s"
-  name: ${friendly_name}
-  update_interval_s: "10s"
+  device_api_key: !secret api_key_termoacumulador
+  device_ota_key: !secret ota_key_termoacumulador
+  device_ip_addr: !secret ip_termoacumulador
+  device_addr: "116"
 
-<<: !include include/dados.yaml
+
+##############################################  
+  max_temp: "60.0"
+  min_temp: "55.0"
+
+  max_bar: "9.5"
+  min_bar: "1.5" 
+  update_interval_s: "5s"
+#  agua_temp: ${temperatura_agua}
+##############################################
+
+packages:
+  <<: !include_dir_named common
+  board: !include boards/esp8266_d1_mini.yaml
+  i2c: !include components/i2c_esp8266.yaml
+  #sensor: !include sensors/agua_quente.yaml
+
+  ####### TERMOACUMULADOR
 
 esphome:
-  name: '${device_name}'
-  comment: '${device_description}'
-  build_path: ./projectos/${friendly_name} - ${device_location}
-  platform: ESP8266
-  board: d1_mini
-
-#######################
   on_boot:
     - delay: 10s
     - climate.control:
@@ -25,111 +36,180 @@ esphome:
         mode: HEAT_COOL
     - climate.control:
         id: this_thermostat
-        target_temperature_low: 65.0 
-        target_temperature_high: 70.0
-##########################
-# Enable logging 
-# DEBUG or null - (Default) - Color: cyan; 
-# INFO - errors, warnings and info - Color: green;
-# VERBOSE - Like debug, but a few more messages - Color: grey
-# WARN - warnings and errors are logged - Color: yellow
-logger:
-  level: info
+###        target_temperature: 65.5
+        target_temperature_low: 55.0 
+        target_temperature_high: 60.0
 
-api:
-  encryption:
-    key: !secret api_key_termoacumulador
-
-ota:
-  password: !secret ota_password_termoacumulador
-
-wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
-  manual_ip:
-    static_ip: 192.168.1.116
-    gateway: 192.168.1.1
-    subnet: 255.255.255.0
-    dns1: !secret dns1_ip
-    dns2: !secret dns2_ip
-
-  ap:
-    ssid: "${device_name}"
-    password: !secret wifi_ap_password 
-
-captive_portal:
 time:
   - platform: homeassistant
-    id: esptime
+    id: homeassistant_time
     
+# The default I2C pins (GPIO4 and GPIO5) of the ESP8266.
+# Connect the SDA pin to D2 (GPIO4) and the SCL pin to D1 (GPIO5).
+
 i2c:
   - id: bus_a
     sda: D1 # GPIO5 
     scl: D2 # GPIO4
     scan: False
 
-dallas:
-  - pin: D5 # GPIO14
-    update_interval: ${update_interval_s}
-  
-sensor:
-  - platform: uptime
-    name: ${friendly_name} - Tempo Online
-    icon: mdi:timeline-clock
-    filters:
-      - lambda: return x / 3600.0;
-    unit_of_measurement: "horas"
-    accuracy_decimals: 2 
-  - platform: wifi_signal
-    name: ${friendly_name} - Sinal WiFi dB
-    id: wifi_signal_db
-    update_interval: ${update_interval_wifi}
-  - platform: copy
-    source_id: wifi_signal_db
-    name: ${friendly_name} - Sinal WiFi %
-    filters:
-      - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
-    unit_of_measurement: " %"
+#Configuration entry for 18B20 sensor
+one_wire:
+  - platform: gpio
+    pin: D5 # GPIO14
 
+sensor:
 # Dallas DS18B20 sensor:
-  - platform: dallas
-    address: 0x993c3d0457dc2128
+  - platform: dallas_temp
+    address: 0x573c85f649e17f28  #0x993c3d0457dc2128
     name: "${friendly_name}: Temperatura da agua"
     device_class: "temperature"
     state_class: "measurement"
     id: temperatura_agua
+    # Optional variables:
     unit_of_measurement: "°C"
     icon: "mdi:water-thermometer"
     accuracy_decimals: 2
+    update_interval: ${update_interval_s}    
     filters:
         - heartbeat: 5s
-#################################################
+#    on_value_range:
+#      - below: ${min_temp}
+#        then:
+#          - switch.turn_off: relay
+#          - homeassistant.service:
+#              service: persistent_notification.create
+#              data:
+#                title: >
+#                  Thermostat is {{ state_attr('climate.termoacumulador', 'hvac_action') }}
+#              data_template:
+#                message: Termoacumudador ligado. "Temperatura da agua {{ state_attr('climate.termoacumulador', 'current_temperature') }}"
+
+##############################################
+#sensor:
+# Pressure: raw (volts)
+  - platform: adc
+    pin: GPIO17
+    name: "Pressão (Volts)"
+    id: pressao_volts
+    filters:
+      - offset: 0.22
+      - calibrate_linear:
+          - 0.0 -> 0.0
+#          - 0.16 -> 0.0
+          - 2.4 -> 1.6
+#          - 0.7 -> 0.0
+#          - 3.49 -> 5.1
+#          - 5.90 -> 5.0
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    update_interval: 1s
+    icon: "mdi:gauge"
+
+  # Pressure: psi
+  - platform: template
+    name: "Pressão (PSI)"
+    id: pressao_psi
+    filters:
+      - offset: 0.0
+#    filters:
+#      - offset: 0
+#    - lambda: return ((x * 3.3 -0.5) * 25);
+    lambda: |-
+      return 5 * id(pressao_volts).state * 43.75 - 21.875;
+    unit_of_measurement: 'PSI'
+    accuracy_decimals: 2
+    update_interval: 1s
+    icon: "mdi:gauge"
+
+  # Pressure: bar
+  - platform: template
+    name: "Pressão (Bar)"
+    id: pressao_bar
+    filters:
+      - offset: 0.0
+    lambda: |-
+      return id(pressao_psi).state * 0.068948;
+    unit_of_measurement: 'bar'
+    accuracy_decimals: 2
+    update_interval: 1s
+    icon: "mdi:gauge"
+####################################################
+    on_value_range:
+      - above: ${max_bar}
+        then:
+          - switch.turn_off: termoacumulador_rele
+          - homeassistant.service:
+              service: persistent_notification.create
+              data:
+                title: AVISO do ${device_name}
+              data_template:
+                message: O ${device_name} está com a pressão a rede acima de ${max_bar} Bar. Pressão actual é de $(pressao_bar) Bar.
+
+#    on_value_range:
+      - below: ${min_bar}
+        then:
+          - switch.turn_off: termoacumulador_rele
+          - homeassistant.service:
+              service: persistent_notification.create
+              data:
+                title: AVISO do ${device_name}
+              data_template:
+                message: O ${device_name} está com a pressão da rede abaixo de ${min_bar} Bar. Pressão actual é de $(pressao_bar) Bar.
+
+
+#    on_value_range:
+#    - above: "${max_bar}"
+#      below: "${min_bar}"
+#      - below: ${min_bar}
+#        then:
+#          - switch.turn_off: relay
+#          - homeassistant.service:
+#              service: persistent_notification.create
+#              data:
+#                title: >
+#                  Thermostat is {{ state_attr('climate.termoacumulador', 'hvac_action') }}
+#              data_template:
+#                message: Termoacumudador ligado. "Temperatura da agua {{ state_attr('climate.termoacumulador', 'current_temperature') }}"
+
+##############################################
+
+# Example configuration entry
 climate:
   - platform: thermostat
-    name: $name
+    name: $friendly_name #########Termostato
     id: this_thermostat
     visual:
-      min_temperature: 20
-      max_temperature: 80
+      min_temperature: 30
+      max_temperature: 70
     sensor: temperatura_agua
 
-
-
-    default_preset: Home  
+    default_preset: Home                     ### NEW! Use this to set Preset
+#    on_boot_restore_from: memory              ### Use this to "Restore From Memeory" (A Saved State) OR...
+    # on_boot_restore_from: default_preset    ### Use this to set Preset to start on every Boot    
     preset:
       - name: Home
-        default_target_temperature_low: 65.0  
+        default_target_temperature_low: 55.0  ### Remove for single Control Thermostat
+        default_target_temperature_high: 60.0
+      - name: Eco
+        default_target_temperature_low: 40.0  ### Remove for single Control Thermostat
+        default_target_temperature_high: 45.0
+      - name: Boost
+        default_target_temperature_low: 65.0  ### Remove for single Control Thermostat
         default_target_temperature_high: 70.0
-  
+      - name: Away
+        default_target_temperature_low: 35.0  ### Remove for single Control Thermostat
+        default_target_temperature_high: 60.0
+
     min_cooling_off_time: 1s
     min_cooling_run_time: 1s
-    min_heating_off_time: 1s              
-    min_heating_run_time: 1s              
+    min_heating_off_time: 1s              ### Remove for single Control Thermostat
+    min_heating_run_time: 1s              ### Remove for single Control Thermostat
     min_idle_time: 1s
 
     cool_action:
       - switch.turn_off: termoacumulador_rele
-
+##### Remove for single Control Thermostat ####
     heat_action:
       - switch.turn_on: termoacumulador_rele
 
@@ -138,14 +218,21 @@ climate:
 
 switch:
   - platform: gpio
-    name: ${friendly_name} - rele
+    name: ${friendly_name}
     pin: D6 #GPIO12
     id: termoacumulador_rele
+    inverted: False
     restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      - lambda: |-
+          id(termoacumulador_rele).set_icon("mdi:fire-circle");
+    on_turn_off:
+      - lambda: |-
+          id(termoacumulador_rele).set_icon("mdi:shower-head");
 
-  - platform: restart
-    name: "${friendly_name}: Restart"
-button:
-  - platform: safe_mode
-    name: "${friendly_name}: Restart (Safe Mode)"
+#######################################################
+
+
+
+
 

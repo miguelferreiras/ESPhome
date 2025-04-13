@@ -1,0 +1,343 @@
+substitutions:
+  device_name: "media-player-wc" #nome do MCU
+  friendly_name: "Muqi" #nome amigavel do MCU
+  device_location: "WC" # lugar onde está instalado
+  device_info: "Esp32"
+  device_extras: "Media player Stereo ESP32-DUO Sonocota com voice assistant - Coluna e microfone " # descriçao das funçoes extras do MCU
+  device_api_key: !secret api_key_media-player-wc
+  device_ota_key: !secret ota_password_media-player-wc
+  device_ip_addr: !secret ip_media-player-wc
+  device_addr: "111"
+
+#### pins usados ####
+# GPIO22 I2S_DATA AMPLIFICADOR
+# GPIO25 IS2_WS AMLIFICADOR / MICROFONE
+# GPIO26 I2S_CLK AMLIFICADOR / MICROFONE
+# GPIO4 SD MICROFONE
+# GPIO18 VOL-
+# GPIO19 VOL+
+# GPIO23 PAUSA
+# GPIO33 STOP
+# GPIO32 VA On/Off
+# GPIO27 LED RGB
+# GPIO21 LIVRE
+# GPIO5  LIVRE outputs PWM signal at boot, strapping pin
+# GPIO34 LIVRE input only
+# GPIO35 LIVRE input only
+
+
+esphome:
+  on_boot:
+     - priority: -100
+       then:
+         - wait_until: api.connected
+         - delay: 10s
+         - if:
+             condition:
+               switch.is_on: use_wake_word
+             then:
+               - voice_assistant.start_continuous:
+
+
+packages:
+  <<: !include_dir_named common
+  board: !include boards/esp32-d1-mini.yaml
+
+i2s_audio:
+  - id: i2s_in
+    i2s_lrclk_pin: GPIO25 #WS I2S_WS
+    i2s_bclk_pin: GPIO26 #SCK I2S_CLK
+
+microphone:
+  - platform: i2s_audio
+    adc_type: external
+    pdm: false
+    id: mic_i2s
+    channel: right
+    bits_per_sample: 32bit
+    i2s_audio_id: i2s_in
+    i2s_din_pin: GPIO4  #SD Pin from the INMP441 Microphone
+
+media_player:
+  - platform: i2s_audio
+    name: "${friendly_name} ${device_location}"
+    id: media_player_wc
+    i2s_audio_id: i2s_in
+    dac_type: external
+    i2s_dout_pin: GPIO22   # I2S_DATA  DIN Pin of the MAX98357A Audio Amplifier
+    mode: stereo
+
+voice_assistant:
+  microphone: mic_i2s
+  id: va
+  noise_suppression_level: 2
+  auto_gain: 31dBFS
+  volume_multiplier: 4.0
+  use_wake_word: true
+  media_player: media_player_wc
+  
+  on_wake_word_detected: 
+    - light.turn_on:
+        id: led_light
+  on_listening: 
+    - light.turn_on:
+        id: led_light
+        effect: "Scan Effect With Custom Values"
+        red: 63%
+        green: 13%
+        blue: 93%
+  
+  on_stt_end:
+    - light.turn_on:
+        id: led_light
+        effect: "Scan Effect With Custom Values" # "None"
+        red: 0%
+        green: 70%
+        blue: 0%
+
+  on_error: 
+    - light.turn_on:
+        id: led_light
+        effect: "Scan Effect With Custom Values" # "None"
+        red: 70%
+        green: 0%
+        blue: 0%
+    - if:
+        condition:
+          switch.is_on: use_wake_word
+        then:
+          - switch.turn_off: use_wake_word
+          - delay: 1sec 
+          - switch.turn_on: use_wake_word      
+  
+  on_client_connected:
+    - media_player.volume_set:
+        id: media_player_wc
+        volume: 50%
+    - if:
+        condition:
+          switch.is_on: use_wake_word
+        then:
+          - voice_assistant.start_continuous:
+
+  on_client_disconnected:
+    - if:
+        condition:
+          switch.is_on: use_wake_word
+        then:
+          - voice_assistant.stop:
+ 
+  on_end:
+    - light.turn_off:
+        id: led_light
+
+binary_sensor:
+  - platform: status
+    name: API Connection
+    id: api_connection
+    filters:
+      - delayed_on: 1s
+    on_press:
+      - if:
+          condition:
+            switch.is_on: use_wake_word
+          then:
+            - voice_assistant.start_continuous:
+    on_release:
+      - if:
+          condition:
+            switch.is_on: use_wake_word
+          then:
+            - voice_assistant.stop:
+#####
+  - platform: gpio
+    pin:
+      number: GPIO19
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    name: Volume Up
+    internal: true
+    on_click:
+      - media_player.volume_up: media_player_wc
+
+  - platform: gpio
+    pin:
+      number: GPIO18
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    name: Volume Down
+    internal: true
+    on_click:
+      - media_player.volume_down: media_player_wc
+
+  - platform: gpio
+    pin:
+      number: GPIO33
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    name: Stop
+    internal: true
+    on_multi_click:
+      - timing:
+          - ON FOR AT MOST 350ms
+          - OFF FOR AT LEAST 10ms
+        then:
+          - media_player.toggle: media_player_wc
+      - timing:
+          - ON FOR AT LEAST 350ms
+        then:
+          - voice_assistant.start:
+      - timing:
+          - ON FOR AT LEAST 350ms
+          - OFF FOR AT LEAST 10ms
+        then:
+          - voice_assistant.stop:
+      # Long Press
+      - timing:
+          - ON for at least 2s
+        then:
+          - media_player.stop: media_player_wc
+
+
+  - platform: gpio
+    pin:
+      number: GPIO23
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    name: Play/Pause
+    internal: true
+    on_press:
+      - media_player.toggle: media_player_wc
+
+###
+  - platform: gpio
+    pin:
+      number: GPIO32
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    name: Action
+    internal: true
+    on_multi_click:
+      - timing:
+          - ON FOR AT MOST 350ms
+          - OFF FOR AT LEAST 10ms
+        then:
+          - media_player.toggle: media_player_wc
+      - timing:
+          - ON FOR AT LEAST 350ms
+        then:
+          - voice_assistant.start:
+      - timing:
+          - ON FOR AT LEAST 350ms
+          - OFF FOR AT LEAST 10ms
+        then:
+          - voice_assistant.stop:
+
+#####
+button:
+  - platform: template
+    id: media_player_wc_vol_up
+    name: Volume up
+    icon: "mdi:volume-plus"
+    on_press:
+      - media_player.volume_up: media_player_wc
+
+  - platform: template
+    id: media_player_wc_vol_down
+    icon: "mdi:volume-minus"
+    name: Volume down
+    on_press:
+      - media_player.volume_down: media_player_wc
+
+  - platform: template
+    id: media_player_wc_off
+    icon: "mdi:power"
+    name: Stop
+    on_press:
+      if:
+        condition:
+          - media_player.is_idle: media_player_wc
+        then:
+          - media_player.stop: media_player_wc
+
+#####
+switch:
+  - platform: gpio
+    pin: GPIO5
+    name: "AMP Switch"
+    id: amp_switch
+    restore_mode: ALWAYS_ON
+
+###  original
+
+#  - platform: template
+#    name: Use wake word
+#    id: use_wake_word
+#    optimistic: true
+#    restore_mode: RESTORE_DEFAULT_OFF
+#    entity_category: config
+#    on_turn_on:
+#      - if:
+#          condition:
+#            not:
+#              - voice_assistant.is_running
+#          then:
+#            - voice_assistant.start_continuous
+#    on_turn_off:
+#      - voice_assistant.stop
+
+
+
+  - platform: template
+    name: Use wake word
+    id: use_wake_word
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+    on_turn_on:
+      - lambda: id(va).set_use_wake_word(true);
+      - if:
+          condition:
+            not:
+              - voice_assistant.is_running
+          then:
+            - voice_assistant.start_continuous
+    on_turn_off:
+      - voice_assistant.stop
+      - lambda: id(va).set_use_wake_word(false);
+
+
+light:
+  - platform: neopixelbus
+    id: led_light
+    type: grb
+    pin: GPIO27      # DIN pin of the LED Strip
+    num_leds: 1      # change the Number of LEDS according to your LED Strip.
+    name: "${friendly_name} led"
+    variant: ws2812x
+    default_transition_length: 0.5s
+      
+    effects:
+      - pulse:
+          name: "Slow Pulse"
+          transition_length: 250ms
+          update_interval: 250ms
+          min_brightness: 50%
+          max_brightness: 100%
+      - pulse:
+          name: "Fast Pulse"
+          transition_length: 100ms
+          update_interval: 100ms
+          min_brightness: 50%
+          max_brightness: 100%
+    
