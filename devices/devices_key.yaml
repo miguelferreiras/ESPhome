@@ -1,0 +1,180 @@
+---
+## XXXXX PASSWORDS ESPHOME DEVICES XXXXX
+# Testes  - aa-Esp8266 D1 mini
+api_key_teste: "uHpIV2R8/iQ3gJ6Mw0Ac1wBnNiVAzYzYlTfA1TQYB2E="
+ota_key_teste: "2bbc89db2aaa15bc59b8b94e2d56545c"
+ip_teste: 192.168.1.104
+
+# Board ESP32-S3 N16R8 voice-assist-s3 192.168.1.106
+api_key_voice-assist-s3: "dmWDOogqqGgZc1ioQirDLhJr7DcY7bGJ6jH8hQHxQMA="
+ota_key_voice-assist-s3: "7f7106f91a24a2a83a4607e99d91d0ae"
+ip_voice-assist-s3: 192.168.1.106
+
+# Board ESP32 Relay Aliexpress: 192.168.1.106
+api_key_board-esp32-relay: "dmWDOogqqGgZc1ioQirDLhJr7DcY7bGJ6jH8hQHxQMA="
+ota_key_board-esp32-relay: "7f7106f91a24a2a83a4607e99d91d0ae"
+ip_board-esp32-relay: 192.168.1.107
+
+# esp-cam cozinha  - aa-Esp8266 D1 mini
+api_key_esp-cam: "yJ3hZD40edsnjklLv9t5ZxprnBDW8sLEVDAJJJR0Dn0="
+ota_key_esp-cam: "5a15c5fd373332e171427af3a6c185b8"
+ip_esp-cam: 192.168.1.108
+
+# esp-Bluetooth proxy  -ESP32 D1 mini
+api_key_bluetooth-proxy-ca589c: "T9EjIySWduzsKMG7RBjkPJXOF79yfzaJDOhp8StJ17M="
+ota_key_bluetooth-proxy-ca589c: "5a15c5fd373332e171427af3a6c185b8"
+ip_bluetooth-proxy-ca589c: 192.168.1.109
+
+# Ventoinha da Sala - 3 velocidades ip_ventuinha_sala: 192.168.1.110
+api_key_ventuinha-da-sala: "jGwRn7nWzipDa+KrsVVHDzIwSmU2emG+/5TOdaR5WWM="
+ota_key_ventuinha-da-sala: "e9e70280ac840ac1a95ebd216740a2b8"
+ip_ventuinha-da-sala: 192.168.1.110
+
+# Media player Quarto - Voice assistant - ESP32: 192.168.1.111
+api_key_media-player-quarto: "ILrkX8unJHWhg3cTzbRroR76qArJuXxKrywCIU6UU5Q="
+ota_password_media-player-quarto: "df534f7877ec259fa5a570e82bd69977"
+ota_key_media-player-quarto: "df534f7877ec259fa5a570e82bd69977"
+ip_media-player-quarto: 192.168.1.111
+
+# Sonoff TH16 ip_sonoff_thr16: 192.168.1.112
+api_key_sonoffthr16: "OyCIPNZpLnDryHAaNR9hRGgsnJLtKHn0iLTG5tzYlBU="
+ota_password_sonoffthr16: "912f50876497af170486cd52b0058066"
+ip_sonoffthr16: 192.168.1.112
+
+# Armario WC  - Sonoff SV ip_armario_wc: 192.168.1.114
+api_key_armario_wc: "ANqcoDBEhdB7g6rNUvjBjB3TvXmibiS7XdU1K/y2kQQ="
+ota_password_armario_wc: "35c0728c7d3c74860baa19351a6c10f9"
+ota_key_armario_wc: "35c0728c7d3c74860baa19351a6c10f9"
+ip_armario_wc: 192.168.1.114
+
+# Display TFT ILI9341 - esp32 ip_display: 192.168.1.115
+api_key_display: "jMG+lkbTQGp1rk87ysn2Jn9w6SjHp+Xe87/o+kwoDb0="
+ip_display: 192.168.1.115
+
+# Termoacumulador  - Esp8266 D1 mini ip_termoacumulador: 192.168.1.116
+api_key_termoacumulador: "+kItCWUUygc0YFwPAZ2h6OdgvFUi9Ws4bJCxPdI6AXw="
+ota_key_termoacumulador: "58bcda75818429011a4468877abcd594"
+ip_termoacumulador: 192.168.1.116
+
+# Exaustor  - esp32 ip_exaustor: 192.168.1.117
+api_key_exaustor: "1a0EOVRZif8xOKaXNgQByy2QQ7aiwIA8IglgLnvL6sw=1"
+
+ip_exaustor: 192.168.1.117
+
+# Candeeiro da sala - Esp8266 D1 Mini ip_candeeiro_sala: 192.168.1.118
+api_key_candeeiro: "IjAuuS/6T/wg1W2lV+FP5dK3xDkd2YTlB+scmsyXakM="
+ota_key_candeeiro: "6h/k44pQx+ddp05RIRt8G64tuOytCTOsR7G2EOs0M2U="
+ip_candeeiro: 192.168.1.118
+
+# Sensor de Qualidade do Ar - ENS160 + ATH21 Esp8266 D1 Mini ip_tvocs: 192.168.1.119
+api_key_tvocs: "LzGHsWPUi2H6WLDkAtPw2cPktLOf0Q36WZqGV97jX+Y="
+ota_key_tvocs: "6h/k44pQx+ddp05RIRt8G64tuOytCTOsR7G2EOs0M2U="
+ip_tvocs: 192.168.1.119
+
+# Lampada do Hall - Espelho - Esp8266 D1 Mini Pro - 1 lampada SSR 1 ch - 24 LEDs Enderresaveis
+api_key_lampada-hall: "1dbq3JwNd2yF4pc/gI4YpG73fZWOilfyJFAPXfYI0os="
+ota_key_lampada-hall: "a950579ef65ffc196a6e2e293540a842"
+ip_lampada-hall: 192.168.1.120
+
+# Luz da cozinha com deteçao MW - Esp8266 D1 Mini ip_luz_cozinha: 192.168.1.121
+api_key_luz-cozinha: "iVnMzR1PVCKVQRK9iLGKSwqZVTgVgN2cHGI6DsiNueQ="
+ota_key_luz-cozinha: "5e92cab337a95ce34b0c4a3d2b3f627d"
+ip_luz-cozinha: 192.168.1.121
+
+# Voice Assistant - Quadro - ESP32-S3: 192.168.1.122
+api_key_va_quadro: "lY0t+p2paixyfa8cgl5cX8gzLj52vbq6aK4+P2hoKwU="
+ota_password_va_quadro: "10d9b68b55f841d395f5575085e20e37"
+ip_va_quadro: 192.168.1.122
+
+# WC  - Luz e ventilaçao - Esp8266 LD2410C AHT20 SSR ip_wc: 192.168.1.123
+api_key_wc: "m2O6aRYsRGRSyiKacAGkzwzndeGiyNtgt5BeZeo1bS4="
+ota_key_wc: "811192610"
+ip_wc: 192.168.1.123
+
+# WC-led-strip - Controlo NDIS RGBCW BK7231N - ip_wc-led-strip: 192.168.1.124
+api_key_wc-led-strip: "+Sr8fNk648QyjhGzHviBy1wmv16lwX/fzJ13SKNEM3M="
+ota_key_wc-led-strip: "811192610"
+ip_wc-led-strip: 192.168.1.124
+
+# LEDs TV  - Luz e RGB WW - Esp8266 Placa 5 canais PWM ip_ledtv: 192.168.1.125
+api_key_ledtv: "dvG8PKemHfnxvFzbcJzAMdZsMi2GQHtecQ3F0DJw30o="
+ip_ledtv: 192.168.1.125
+
+# Interruptor  - Esp8266 D1 mini ip_interruptor: 192.168.1.126
+api_key_interruptor: "Qv9IuHEVMmxp71Sk8/DaD8wUibKQN9H6UjEoLvmXdbA="
+ota_key_interruptor: "7b8d0f10ec703d66067d9f9e6ab3d968"
+ip_interruptor: 192.168.1.126
+
+# bk7231n-bulb - Controlo NDIS RGBCW BK7231N - ip_wc-led-strip: 192.168.1.127
+api_key_bk7231n-bulb: "wDyP45ghlggKezpv7c0NGL++8PE5xif2WcNf5g5KfH0="
+ota_key_bk7231n-bulb: "811192610"
+ip_bk7231n-bulb: 192.168.1.127
+
+# bk7231n-CB2L bulb - Controlo RGBCW BK7231N - ip_rgb-bc2l: 192.168.1.128
+api_key_rgb-cb2l: "3jGaJVE4sM7GTwDZQJMHzjLdU9OyWjF5i/REH68nTgY="
+ota_key_rgb-cb2l: "82a99efc5cf65392a4d2d8c7c90b90c3"
+ip_rgb-cb2l: 192.168.1.128
+
+# LEDs mesa secretária  - Luz e RGB WW - Esp32 C3 Placa 5 canais PWM ip_ledmesa: 192.168.1.129
+api_key_ledmesa: "H8aD2ei9UYmSMt1o7LRBT3sbblKRIB7OGoQszhPERBI="
+ota_key_ledmesa: "811192610"
+ip_ledmesa: 192.168.1.129
+
+# Shelly 1PM ip_shelly1: 192.168.1.130
+api_key_shelly1: "omamhXqZ6mMjgt00ozvFcZf289AXXPGNKyaeuFljY2U="
+ota_password_shelly1: "215b90fd1c1050b7ea8c9c8d8117900d"
+ota_key_shelly1: "215b90fd1c1050b7ea8c9c8d8117900d"
+ap_ssid_shelly1: "shelly1 Fallback Hotspot"
+ip_shelly1: 192.168.1.130
+
+# ESP8266 - Fonte 3,3V - interruptores do quarto 192.168.1.131
+api_key_switch-quarto: "M/B2KoL66+uq9ypLzdFJuKi7uwh+DydQ1vVyYxbnBIk="
+ota_key_switch-quarto: "d78bb3ec69736ed6b91709cfdcfc5a9d"
+ip_switch-quarto: 192.168.1.131
+
+# Shelly RGBW2 ip_shellyrgb2: 192.168.1.132
+api_key_shellyrgb: "dydHYdAbzE14dgUN0g4VwuaOIciU/d+B9VuOSu/qw+A="
+ota_password_shellyrgb: "685a71dd2dd2b2980f0b5a2d348ae5e3"
+ota_key_shellyrgb: "685a71dd2dd2b2980f0b5a2d348ae5e3"
+ip_shellyrgb: 192.168.1.132
+
+# 2x lampadas - 2x SSR - ESP32-WROOM-32E com relé 230V: 192.168.1.133
+api_key_luz_quarto: "icZk23Eqmx+g8C39tlHJFYSFj/Cqo3g+RRzkz7O9Bq8="
+ota_password_luz_quarto: "082af00d9229ea166f228e85478236c9"
+ota_key_luz_quarto: "7861c9cf2cebb395713bd1b27a1ef0dd"
+ip_luz_quarto: 192.168.1.133
+
+# Louder Esp32-S3 N16R8 Media Player Sonocotta 192.168.1.134
+api_key_louder: "Y1qofRnQLrPO2TmFAxtA9xk3TMi9Fk9SpHNlmXC9R9I="
+ota_key_louder: "769d0fcb8ab07f99b775bd20a74a9ca7"
+ip_louder: 192.168.1.134
+
+# Tomada 2 Shelly - tomada shelly Plug S ip_placa: 192.168.1.136
+api_key_tomada_2_shelly: "k51YlKrtoy2ExrOmh7q3FPKwZuKjeHLYF2pD8C6Toek="
+ota_key_tomada_2_shelly: "a0bfac4b403c901ecba1a5793806d403"
+ip_tomada_2_shelly: 192.168.1.136
+
+# Placa do termoacumulador - tomada shelly Plug S ip_termo: 192.168.1.138
+api_key_tomada_1_shelly: "KgBwhY1SO1s8LtVJlt2hL0ILol/eRT+obGkQ7lR3rN8="
+ota_key_tomada_1_shelly: "d87d450e37873afc028ad6f3d767e88e"
+ip_tomada_1_shelly: 192.168.1.138
+
+# Tomada Gosund T1s  - Esp8285 ESP-M1
+api_key_gosound-t1: "nE+Zg0Mtdkf6ynvv0bs50uGmr3YYWfrdNOV/BJwY3H8="
+ota_key_gosound-t1: "524b2366e395376262d7f8267e446dad"
+ip_gosound-t1: 192.168.1.140
+
+# Tomada Gosund T2s  - Esp8285 ESP-M1
+api_key_gosound-t2: "8Py3vkr1wHfnwmZGfvqUZoWTu5bfwpUJwt/JQ1QDbPI="
+ota_key_gosound-t2: "a44dd0b59f2a26a43df1a3cace2615e7"
+ip_gosound-t2: 192.168.1.141
+
+# Tomada Gosund T3s  - Esp8285 ESP-M1
+api_key_gosound-t3: "T2xVuCHMMrv+tns/VRgBLCBcnmwsFSPDo2O/fBXMvM4="
+ota_key_gosound-t3: "9f1b2000a12dd0ba5001dfc9f4b2f017"
+ip_gosound-t3: 192.168.1.142
+
+# Tomada Gosund T4s  - Esp8285 ESP-M2
+api_key_gosound-t4: "Ph+8Lz9Hji/mkviuR5tLqNYJ2ROzQXlKh09NqiijaLM="
+ota_key_gosound-t4: "d9804b7c7f0463194637665b4f623598"
+ip_gosound-t4: 192.168.1.143

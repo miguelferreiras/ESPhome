@@ -1,0 +1,133 @@
+# COPIAR PARA O NOVO YAML E ALTERAR OS IDs DOS DISPOSITIVOS
+# BEM COMO OS PINS TX E RX PARA OUTRO ESP
+# ESP8266 tx_pin: TX - rx_pin: RX
+# ESP8266 tx_pin: GPIO1 - rx_pin: GPIO3
+# ESP32 UART0-> tx_pin: GPIO1 - rx_pin: GPIO3
+# ESP32 UART2-> tx_pin: GPIO17 - rx_pin: GPIO16
+
+###  ESPECIFICO PARA SENSOR DE PRESENÇA LD2410 UART - COPIAR PARA O YAML
+#  target_device_1: "luz_da_cozinha_1" # id do dispositivo 1 a ser controlado Lampadas ou relés ou outro
+#  target_device_2: "luz_da_cozinha_2" # id do dispositivo 2 a ser controlado Lampadas ou relés ou outro
+#  target_name: ${device_info} # Nome do equipamento que aparece no home assistant
+#  tx_pin: GPIO1 # Pin TX  uart Esp8266 ou ESP32 UART0-> tx_pin: GPIO1 - UART2-> tx_pin: GPIO17
+#  rx_pin: GPIO3 # Pin RX  uart Esp8266 ou ESP32 UART0-> rx_pin: GPIO3 - UART2-> rx_pin: GPIO16
+####
+
+substitutions:
+  target_1: "${target_device_1}"
+  target_2: "${target_device_2}"
+  uart_tx: "${tx_pin}"
+  uart_rx: "${rx_pin}"
+
+uart:
+  id: ld2410_uart
+  tx_pin: "${uart_tx}"
+  rx_pin: "${uart_rx}"
+  baud_rate: 256000 # Alterar segundo as difiniçoes da porta COM
+  parity: NONE
+  stop_bits: "1"
+ld2410:
+  uart_id: ld2410_uart
+
+## Configurações do LD2410B
+sensor:
+  - platform: ld2410
+    moving_distance:
+      name: "Distancia em movimento ${target_name}"
+    still_distance:
+      name: "Distancia do alvo parado ${target_name}"
+    moving_energy:
+      name: "Energia do movimento ${target_name}"
+      icon: mdi:lightning-bolt-outline
+    still_energy:
+      name: "Energia do alvo parado ${target_name}"
+      id: energia_alvo_parado
+    detection_distance:
+      name: "Distancia detetada ${target_name}"
+
+number:
+  - platform: ld2410
+    timeout:
+      name: "Tempo para desligar"
+    light_threshold:
+      name: "Limite da luz"
+    max_move_distance_gate:
+      name: "Maximo na Porta Alvo em Movimento"
+    max_still_distance_gate:
+      name: "Maximo na Porta Alvo parado"
+    g0: # 0m
+      move_threshold:
+        name: "g0 Limite do movimento"
+      still_threshold:
+        name: "g0 Limite alvo parado"
+    g1: # 0 - 0.75m
+      move_threshold:
+        name: "g1 Limite do movimento"
+      still_threshold:
+        name: "g1 Limite alvo parado"
+    g2: # 0.75 - 1.5m
+      move_threshold:
+        name: "g2 Limite do movimento"
+      still_threshold:
+        name: g2 Limite alvo parado"
+    g3: # 1.5 - 2.25m
+      move_threshold:
+        name: "g3 Limite do movimento"
+      still_threshold:
+        name: "g3 Limite alvo parado"
+    g4: # 2.25 - 3m
+      move_threshold:
+        name: "g4 Limite do movimento"
+      still_threshold:
+        name: "g4 Limite alvo parado"
+    g5: # 3 - 3.75m
+      move_threshold:
+        name: "g5 Limite do movimento"
+      still_threshold:
+        name: "g5 Limite alvo parado"
+    g6: # 3.75 - 4.5m
+      move_threshold:
+        name: "g6 Limite do movimento"
+      still_threshold:
+        name: "g6 Limite alvo parado"
+    g7: # 4.5 - 5.25m
+      move_threshold:
+        name: "g7 Limite do movimento"
+      still_threshold:
+        name: "g7 Limite alvo parado"
+    g8: # 5.25 - 6m
+      move_threshold:
+        name: "g8 Limite do movimento"
+      still_threshold:
+        name: "g8 Limite alvo parado"
+select:
+  - platform: ld2410
+    distance_resolution:
+      name: "Distancia 0.75m ou 0.2m"
+    baud_rate:
+      name: "Taxa de transmissão"
+    light_function:
+      name: "Função de luz"
+    out_pin_level:
+      name: "Estado do Pin de saida"
+switch:
+  - platform: ld2410
+    engineering_mode:
+      name: "Modo de engenharia"
+    bluetooth:
+      name: "Controlo Bluetooth"
+button:
+  - platform: ld2410
+    factory_reset:
+      name: "Reset fabrica LD2410"
+    restart:
+      name: "Reiniciar LD2410"
+    query_params:
+      name: "Parametros"
+
+text_sensor:
+  - platform: ld2410
+    version:
+      name: "Versão do firmware"
+    mac_address:
+      name: "MAC address LD2410"
