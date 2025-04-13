@@ -143,6 +143,6 @@ sensor:
 #            - switch.turn_on: lampada_armario_wc
 #        - below: 70.0
 #          then:
-#            - switch.turn_off: lampada_armario_wc
+#            - switch.turn_off: lampada_armario_wc 
     update_interval: 30s
     model: DHT22
