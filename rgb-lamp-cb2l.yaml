@@ -18,25 +18,6 @@ mdns:
 debug:
   update_interval: 30s
 
-
-# Enable Home Assistant API
-#api:
-#  encryption:
-#    key: "3jGaJVE4sM7GTwDZQJMHzjLdU9OyWjF5i/REH68nTgY="
-
-#ota:
-#  password: "82a99efc5cf65392a4d2d8c7c90b90c3"
-
-#wifi:
-#  ssid: !secret wifi_ssid
-#  password: !secret wifi_password
-
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-#  ap:
-#    ssid: "Rgb-Lamp-Cb2L Fallback Hotspot"
-#    password: "TL5msgNDxjIO"
-
-
 text_sensor:
   - platform: debug
     reset_reason:
