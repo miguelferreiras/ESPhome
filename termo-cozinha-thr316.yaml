@@ -11,13 +11,9 @@ substitutions:
   device_info: "Climate Termoacumulador"
   device_location: "Cozinha" # lugar onde está instalado
   device_extras: "Climate termoacumulador - ESP32 Sonoff THR316" # descriçao das funçoes extras do MCU
-  device_description: ${friendly_name} - ${device_location} - ${device_extras} # descriçao do MCU
-  projecto: "mig26.${device_name}"
-  versao: !secret esphome_version
   device_api_key: !secret api_key_sonoffthr16
   device_ota_key: !secret ota_key_esp
   device_ip_addr: !secret ip_sonoffthr16
-  update_interval_wifi: "120s"
   device_addr: "112"
   ###
   room: Termo
@@ -46,15 +42,6 @@ esphome:
           id: climate_control
           preset: "Comfort"
 
-
-
-# Enable Home Assistant API
-#api:
-#  encryption:
-#    key: "ZNzMYGitW2beup1NKPZ98RF6wWlkyVnIiePEHaB2Olk="
-
-#ota:
-#  password: "1cf0a8df064a4de0520a2d2b4bcb28c8"
 
 
 logger:
@@ -92,15 +79,6 @@ sensor:
     accuracy_decimals: 2
     filters:
         - heartbeat: 5s
-
-#  - platform: homeassistant
-#    id: internal_humidity
-#    entity_id: sensor.humidade_do_wc 
-
-#  - platform: homeassistant
-#    id: preset_modes
-#    entity_id: sensor.preset_modes
-
 
 
 binary_sensor:
