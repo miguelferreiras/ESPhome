@@ -164,4 +164,4 @@ switch:
       - lambda: "id(velocidade2).turn_off();"
       - lambda: "id(velocidade3).turn_off();"
 
-    
+  
