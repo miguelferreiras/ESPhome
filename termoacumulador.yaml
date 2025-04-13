@@ -8,12 +8,9 @@ substitutions:
   device_ota_key: !secret ota_key_termoacumulador
   device_ip_addr: !secret ip_termoacumulador
   device_addr: "116"
-
-
 ##############################################  
   max_temp: "60.0"
   min_temp: "55.0"
-
   max_bar: "9.5"
   min_bar: "1.5" 
   update_interval_s: "5s"
@@ -24,8 +21,6 @@ packages:
   <<: !include_dir_named common
   board: !include boards/esp8266_d1_mini.yaml
   i2c: !include components/i2c_esp8266.yaml
-  #sensor: !include sensors/agua_quente.yaml
-
   ####### TERMOACUMULADOR
 
 esphome:
@@ -36,7 +31,6 @@ esphome:
         mode: HEAT_COOL
     - climate.control:
         id: this_thermostat
-###        target_temperature: 65.5
         target_temperature_low: 55.0 
         target_temperature_high: 60.0
 
@@ -230,7 +224,6 @@ switch:
       - lambda: |-
           id(termoacumulador_rele).set_icon("mdi:shower-head");
 
-#######################################################
 
 
 
