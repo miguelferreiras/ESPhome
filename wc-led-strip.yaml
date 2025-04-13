@@ -68,7 +68,7 @@ logger:
 #	P06	GPIOP_06  PWM0. output_blue
 #	P07	GPIOP_07 PWM1. output_cold
 # P26	GPIOP_26 PWM5. output_warm
-#####
+####
 uart:
   id: ld2410_uart
   tx_pin: P11
