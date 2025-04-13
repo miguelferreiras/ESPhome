@@ -1,0 +1,13 @@
+---
+#
+# The safe mode button platform allows you to restart your node remotely through
+# Home Assistant in safe mode
+#
+# I wish there was a single service for this, by default...
+#
+# https://esphome.io/components/button/restart.html
+#
+
+platform: safe_mode
+id: button_safe_mode
+name: Restart (Safe Mode)
